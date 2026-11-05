@@ -1,0 +1,5 @@
+project_id = "looksy-store"
+
+[functions.api]
+# Мини-апп и Telegram вызывают функцию без ключа Supabase — доступ проверяется подписью Telegram внутри.
+verify_jwt = false
