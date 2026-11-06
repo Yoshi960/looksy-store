@@ -1,13 +1,16 @@
-name: Не давать базе уснуть
+name: Ежедневно — напоминания и база
 
-# Бесплатный проект Supabase засыпает после недели без запросов. Раз в день открываем каталог.
+# Раз в день: напомнить покупателям забрать заказы из пункта выдачи.
+# Заодно не даёт бесплатной базе Supabase уснуть (засыпает после недели без запросов).
 on:
   schedule:
-    - cron: "17 6 * * *"
+    - cron: "17 6 * * *"   # 11:17 по Екатеринбургу
   workflow_dispatch:
 
 jobs:
-  ping:
+  daily:
     runs-on: ubuntu-latest
     steps:
-      - run: curl -fsS "https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co/functions/v1/api/catalog" -o /dev/null
+      - run: |
+          curl -fsS -X POST "https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co/functions/v1/api/cron?key=${{ secrets.SETUP_KEY }}"
+          curl -fsS "https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co/functions/v1/api/catalog" -o /dev/null

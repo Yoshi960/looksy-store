@@ -256,6 +256,7 @@ h1.page{font:800 22px var(--display);margin:8px 0 16px}
 .promo button.on{border-color:var(--accent);background:var(--accent-soft)}
 .kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:18px}
 .kpi{background:var(--surface);border-radius:16px;padding:14px}
+.kpi .muted{display:block}
 .kpi b{display:block;font:800 19px var(--display);margin-top:4px;font-variant-numeric:tabular-nums}
 .tbl{overflow-x:auto}
 table.t{width:100%;border-collapse:collapse;font-size:13px}
@@ -267,7 +268,7 @@ h2.sec2{font:800 16px var(--display);margin:22px 0 10px}
 .ord .h{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
 .ord a{color:var(--accent)}
 .st{border:0;border-radius:10px;padding:6px 8px;font-size:12px;font-weight:700;background:var(--surface2);color:var(--text)}
-.st.new{background:var(--st-new-bg);color:var(--st-new)}.st.paid{background:var(--st-paid-bg);color:var(--st-paid)}.st.sent{background:var(--st-sent-bg);color:var(--st-sent)}.st.cancel{background:var(--st-cancel-bg);color:var(--st-cancel)}
+.st.new{background:var(--st-new-bg);color:var(--st-new)}.st.paid{background:var(--st-paid-bg);color:var(--st-paid)}.st.sent{background:var(--st-sent-bg);color:var(--st-sent)}.st.arrived{background:var(--accent-soft);color:var(--accent)}.st.cancel{background:var(--st-cancel-bg);color:var(--st-cancel)}
 .code{font-size:12px;color:var(--hint);padding:4px 0;user-select:all;word-break:break-all}
 .toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:12px;z-index:40;font-size:14px;font-weight:600;max-width:90vw;text-align:center}
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:12;background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);
@@ -295,10 +296,10 @@ h2.sec2{font:800 16px var(--display);margin:22px 0 10px}
 .oc .h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .oc .h b{font:800 16px var(--display)}
 .pillst{border-radius:999px;padding:4px 10px;font-size:12px;font-weight:800;white-space:nowrap}
-.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
 .steps div{height:4px;border-radius:2px;background:var(--surface2)}
 .steps div.on{background:var(--accent)}
-.steps-l{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;font-size:11px;color:var(--hint);margin-top:-6px}
+.steps-l{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;font-size:11px;color:var(--hint);margin-top:-6px}
 .oc .thumbs2{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
 .oc .thumbs2 img{width:52px;height:68px;border-radius:10px;object-fit:cover;flex:none;background:var(--surface2)}
 .trackbox{background:var(--bg);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
@@ -832,8 +833,8 @@ function openCheckout(st={}) {
 }
 
 // ---------------------------------------------------------------- мои заказы
-const STC = {new:['Ждёт подтверждения','new'], paid:['Оплачен, собираем','paid'], sent:['В пути','sent'], done:['Получен','paid'], cancel:['Отменён','cancel']};
-const STEP = {new:1, paid:2, sent:3, done:4, cancel:0};
+const STC = {new:['Ждёт подтверждения','new'], paid:['Оплачен, собираем','paid'], sent:['В пути','sent'], arrived:['Можно забирать','arrived'], done:['Получен','paid'], cancel:['Отменён','cancel']};
+const STEP = {new:1, paid:2, sent:3, arrived:4, done:5, cancel:0};
 const CARRIER = {cdek:'СДЭК', post:'Почта России', other:'Доставка'};
 function openLink(url) { try { if (tg?.openLink) return tg.openLink(url); } catch(e) {} window.open(url, '_blank'); }
 async function renderOrders() {
@@ -849,15 +850,16 @@ async function renderOrders() {
       return `<div class="oc">
         <div class="h"><div><b>№${o.id}</b><div class="muted">${new Date(o.created_at*1000).toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} · ${rub(o.price)}</div></div>
           <span class="pillst st ${cls}">${label}</span></div>
-        ${o.status!=='cancel' ? `<div class="steps">${[1,2,3,4].map(n=>`<div class="${n<=step?'on':''}"></div>`).join('')}</div>
-          <div class="steps-l"><span>Принят</span><span>Оплачен</span><span>В пути</span><span>Получен</span></div>` : ''}
+        ${o.status!=='cancel' ? `<div class="steps">${[1,2,3,4,5].map(n=>`<div class="${n<=step?'on':''}"></div>`).join('')}</div>
+          <div class="steps-l"><span>Принят</span><span>Оплачен</span><span>В пути</span><span>Прибыл</span><span>Получен</span></div>` : ''}
         <div class="thumbs2">${(o.items||[]).map(i => i.photo ? `<img src="${img(i.photo)}" alt="${esc(i.title)}" data-open="${i.product_id}">` : '').join('')}</div>
         <div class="oitems">${(o.items||[]).map(i => `<span>${esc(i.title)}${i.qty>1?` × ${i.qty}`:''} <span class="muted">· ${[i.color, i.size && 'р. '+i.size].filter(Boolean).map(esc).join(' · ')}</span></span>`).join('')}</div>
+        ${o.status==='arrived' ? `<div class="hintbox" style="margin:0">${I.box}<span><b>Заказ ждёт вас в пункте выдачи${o.carrier==='post'?' Почты России':o.carrier==='cdek'?' СДЭК':''}.</b> Заберите его, пока не истёк срок хранения.</span></div>` : ''}
         ${o.track ? `<div class="trackbox"><span class="muted">${CARRIER[o.carrier]||'Доставка'} · трек-номер</span>
             <div class="num"><span>${esc(o.track)}</span><button class="iconbtn" style="width:36px;height:36px" data-copy="${esc(o.track)}" aria-label="Скопировать трек-номер">${I.copy}</button></div>
             ${o.track_url ? `<a href="${esc(o.track_url)}" data-link="${esc(o.track_url)}">Отследить на сайте ${CARRIER[o.carrier]} →</a>` : ''}</div>`
           : (o.status==='paid' ? '<span class="muted">Трек-номер появится здесь сразу после отправки — пришлём его и в Telegram.</span>' : '')}
-        ${['sent','done'].includes(o.status) && left.length ? `<button class="btn ghost" data-rev="${o.id}">${STAR} Оставить отзыв</button>` : ''}
+        ${['sent','arrived','done'].includes(o.status) && left.length ? `<button class="btn ghost" data-rev="${o.id}">${STAR} Оставить отзыв</button>` : ''}
       </div>`; }).join('')
     : `<div class="empty"><b>Заказов пока нет</b>Здесь будет статус каждого заказа и трек-номер для отслеживания.</div><button class="btn ghost" id="tocat">Перейти в каталог</button>`}
     ${nav('orders')}`;
@@ -1040,7 +1042,7 @@ function aCats() {
     await api('/api/admin/category/'+b.dataset.del,{method:'DELETE'}); await load(); aCats(); });
 }
 
-const ST = {new:'Новый', paid:'Оплачен', sent:'Отправлен', done:'Получен', cancel:'Отменён'};
+const ST = {new:'Новый', paid:'Оплачен', sent:'Отправлен', arrived:'Прибыл', done:'Получен', cancel:'Отменён'};
 async function aOrders() {
   const orders = await api('/api/admin/orders');
   const who = o => o.contact==='phone' ? `тел. <span style="user-select:all">${esc(o.phone)}</span>`
@@ -1056,13 +1058,18 @@ async function aOrders() {
       <div class="orow" style="margin-top:6px"><select data-car="${o.id}" aria-label="Служба доставки">
           <option value="cdek" ${o.carrier==='cdek'||!o.carrier?'selected':''}>СДЭК</option><option value="post" ${o.carrier==='post'?'selected':''}>Почта России</option><option value="other" ${o.carrier==='other'?'selected':''}>Другое</option></select>
         <input data-tr="${o.id}" placeholder="Трек-номер" value="${esc(o.track||'')}" aria-label="Трек-номер"><button class="pill" data-trs="${o.id}">Сохранить</button></div>
-      <div class="muted">${new Date(o.created_at*1000).toLocaleString('ru-RU')} · источник: ${esc(o.source)}</div></div>`).join('')
+      ${o.status==='arrived'?`<div class="muted">Напоминаний отправлено: ${o.reminders||0} из 2 (раз в 2 дня, в 11:17)</div>`:''}
+      <div class="h"><span class="muted">${new Date(o.created_at*1000).toLocaleString('ru-RU')} · источник: ${esc(o.source)}</span>
+        <button class="linkback" data-del="${o.id}" style="color:var(--sale);padding:0">Удалить</button></div></div>`).join('')
     : '<div class="empty"><b>Заказов пока нет</b>Новые заказы появятся здесь и придут вам в Telegram</div>';
+  $$('[data-del]').forEach(b => b.onclick = async () => {
+    if (!confirmTap('ord'+b.dataset.del, 'Удалить заказ полностью? Он пропадёт и из статистики.')) return;
+    await api('/api/admin/order/'+b.dataset.del, {method:'DELETE'}); toast('Заказ удалён'); aOrders(); });
   $$('[data-o]').forEach(s => s.onchange = async () => {
     const id = s.dataset.o, track = $(`[data-tr="${id}"]`).value.trim(), carrier = $(`[data-car="${id}"]`).value;
     if (s.value==='sent' && !track) toast('Совет: впишите трек-номер — покупатель получит его в сообщении');
     const r = await api(`/api/admin/order/${id}`,{method:'POST',json:{status:s.value, ...(track?{track, carrier}:{})}}); s.className='st '+s.value;
-    toast(r.review_asked ? 'Статус обновлён, бот попросил отзыв' : r.notified ? 'Статус обновлён, покупатель получил сообщение' : 'Статус обновлён'); });
+    toast(r.review_asked ? 'Статус обновлён, бот попросил отзыв' : r.notified ? 'Статус обновлён, покупатель получил сообщение' : 'Статус обновлён'); aOrders(); });
   $$('[data-trs]').forEach(b => b.onclick = async () => {
     const id = b.dataset.trs, track = $(`[data-tr="${id}"]`).value.trim(), carrier = $(`[data-car="${id}"]`).value;
     const r = await api(`/api/admin/order/${id}`,{method:'POST',json:{track, carrier}});
@@ -1092,21 +1099,22 @@ async function aStats(days=S.days||7) {
   S.days = days;
   const d = await api('/api/admin/stats?days='+days);
   const pct = (a,b) => b ? Math.round(a/b*1000)/10+'%' : '—';
-  const tot = d.by_source.reduce((a,s)=>({v:a.v+(s.visitors||0), o:a.o+(s.orders||0)}),{v:0,o:0});
+  const SRC = {bot:'Бот /start', menu:'Кнопка «Каталог»', bot_msg:'Сообщения бота', share:'Ссылка «Поделиться»', direct:'Напрямую', admin:'Админ', tiktok:'TikTok', tgchannel:'Телеграм-канал', avito:'Авито', baraholka:'Барахолки', vk:'ВКонтакте'};
   $('#pane').innerHTML = `
     <div class="atabs">${[1,7,30].map(n=>`<button class="${days===n?'on':''}" data-d="${n}">${n===1?'Сегодня':n+' дней'}</button>`).join('')}</div>
     <div class="kpis">
-      <div class="kpi"><span class="muted">Посетители</span><b>${tot.v}</b></div>
-      <div class="kpi"><span class="muted">Заявки · конверсия</span><b>${tot.o} · ${pct(tot.o, tot.v)}</b></div>
-      <div class="kpi"><span class="muted">Оплачено</span><b>${d.paid_orders} · ${rub(d.revenue)}</b></div>
+      <div class="kpi"><span class="muted">Посетители</span><b>${d.visitors}</b><span class="muted">уникальные люди</span></div>
+      <div class="kpi"><span class="muted">Заказы</span><b>${d.orders}</b><span class="muted">конверсия ${pct(d.orders, d.visitors)}</span></div>
+      <div class="kpi"><span class="muted">Оплачено</span><b>${d.paid_orders} · ${rub(d.revenue)}</b>${d.paid_orders?`<span class="muted">средний чек ${rub(Math.round(d.revenue/d.paid_orders))}</span>`:''}</div>
       <div class="kpi"><span class="muted">Прибыль</span><b class="good">${rub(d.profit)}</b>${d.no_cost?`<span class="muted">без ${d.no_cost} зак. — нет закупки</span>`:''}</div>
     </div>
+    <p class="muted" style="margin-top:-6px">Отменённые заказы не считаются. Тестовый заказ удалите во вкладке «Заказы» — он пропадёт отсюда.</p>
     <h2 class="sec2">Откуда приходят</h2>
-    <div class="tbl"><table class="t"><tr><th>Источник</th><th class="n">Люди</th><th class="n">«Заказать»</th><th class="n">Заявки</th></tr>
-    ${d.by_source.map(s=>`<tr><td>${esc(s.source)}</td><td class="n">${s.visitors||0}</td><td class="n">${s.clicks||0}</td><td class="n">${s.orders||0}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">Пока нет данных</td></tr>'}</table></div>
+    <div class="tbl"><table class="t"><tr><th>Источник</th><th class="n">Люди</th><th class="n">В корзину</th><th class="n">Заказы</th></tr>
+    ${d.by_source.map(s=>`<tr><td>${esc(SRC[s.source]||s.source)}</td><td class="n">${s.visitors||0}</td><td class="n">${s.clicks||0}</td><td class="n">${s.orders||0}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">Пока нет данных</td></tr>'}</table></div>
     <h2 class="sec2">Товары</h2>
-    <div class="tbl"><table class="t"><tr><th>Товар</th><th class="n">Просм.</th><th class="n">Клики</th><th class="n">Заявки</th></tr>
-    ${d.by_product.map(p=>`<tr><td>${esc(p.title)}</td><td class="n">${p.views||0}</td><td class="n">${p.clicks||0}</td><td class="n">${p.orders||0}</td></tr>`).join('')}</table></div>
+    <div class="tbl"><table class="t"><tr><th>Товар</th><th class="n">Просм.</th><th class="n">В корз.</th><th class="n">Продано</th></tr>
+    ${d.by_product.map(p=>`<tr><td>${esc(p.title)}</td><td class="n">${p.views||0}</td><td class="n">${p.clicks||0}</td><td class="n">${p.sold||0}</td></tr>`).join('')}</table></div>
     <h2 class="sec2">Ссылки для каналов</h2>
     <p class="muted">У каждого канала своя ссылка — так видно, откуда пришли люди.</p>
     ${['tiktok','tgchannel','avito','baraholka','vk'].map(s=>`<div class="code">t.me/${esc(S.bot||'ВАШ_БОТ')}?start=${s}</div>`).join('')}`;

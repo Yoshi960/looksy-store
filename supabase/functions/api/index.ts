@@ -114,6 +114,15 @@ function trackUrl(carrier: string, track: string): string | null {
   return null;
 }
 
+function arrivedText(oid: number, o: Record<string, unknown>, reminder: boolean) {
+  const where = o.carrier === "post" ? "в отделение Почты России" : o.carrier === "cdek" ? "в пункт выдачи СДЭК" : "в пункт выдачи";
+  const tr = o.track ? `\nТрек-номер: <code>${escHtml(String(o.track))}</code>` +
+    (trackUrl(o.carrier as string, o.track as string) ? `\n${trackUrl(o.carrier as string, o.track as string)}` : "") : "";
+  return reminder
+    ? `⏰ Напоминаем: заказ №${oid} ждёт вас ${where}. Заберите его, пока не истёк срок хранения — иначе посылка уедет обратно.${tr}`
+    : `📍 Заказ №${oid} прибыл ${where}! Можно забирать.${tr}\n\nСрок хранения ограничен — лучше забрать в ближайшие дни.`;
+}
+
 // ---------------------------------------------------------------- фото
 
 async function savePhotos(files: File[]): Promise<string[]> {
@@ -170,6 +179,19 @@ async function handle(req: Request): Promise<Response> {
     const a = await tg("setWebhook", { url: self, secret_token: WEBHOOK_SECRET || undefined, allowed_updates: ["message"] });
     const b = await tg("setChatMenuButton", { menu_button: { type: "web_app", text: "Каталог", web_app: { url: `${WEBAPP_URL}/?src=menu` } } });
     return json({ webhook: a, menu: b });
+  }
+
+  // ежедневный запуск (GitHub Actions): напомнить забрать заказы из пункта выдачи
+  if (path === "/api/cron" && m === "POST") {
+    if (!SETUP_KEY || url.searchParams.get("key") !== SETUP_KEY) return err(403, "bad key");
+    const due = must(await db.from("orders").select("*").eq("status", "arrived").lt("reminders", 2)
+      .lt("reminded_at", now() - 2 * 86400)) as Array<Record<string, unknown>>;
+    let sent = 0;
+    for (const o of due) {
+      if (o.user_id) sent += await send(Number(o.user_id), arrivedText(Number(o.id), o, true), { orders: true });
+      await db.from("orders").update({ reminders: Number(o.reminders) + 1, reminded_at: now() }).eq("id", o.id);
+    }
+    return json({ ok: true, due: due.length, sent });
   }
 
   const user = await checkInitData(req.headers.get("x-init-data") ?? "");
@@ -288,7 +310,7 @@ async function handle(req: Request): Promise<Response> {
     const rating = intOrNull(formStr(f, "rating")) ?? 0;
     if (rating < 1 || rating > 5) return err(400, "rating 1-5");
     const o = must(await db.from("orders").select("*").eq("id", oid).maybeSingle()) as Record<string, unknown> | null;
-    if (!o || o.user_id !== u.id || !["sent", "done"].includes(String(o.status))) return err(403, "review only after delivery");
+    if (!o || o.user_id !== u.id || !["sent", "arrived", "done"].includes(String(o.status))) return err(403, "review only after delivery");
     const items = o.items as Array<Record<string, unknown>>;
     const pid = intOrNull(formStr(f, "product_id")) ?? Number(items[0]?.product_id);
     const item = items.find((i) => Number(i.product_id) === pid);
@@ -434,8 +456,9 @@ async function handle(req: Request): Promise<Response> {
     const o = must(await db.from("orders").select("*").eq("id", oid).maybeSingle()) as Record<string, unknown> | null;
     if (!o) return err(404, "no order");
     const upd: Record<string, unknown> = { updated_at: now() };
+    if (d.status === "arrived" && o.status !== "arrived") { upd.reminders = 0; upd.reminded_at = now(); }
     if (d.status !== undefined) {
-      if (!["new", "paid", "sent", "done", "cancel"].includes(d.status)) return err(400, "bad status");
+      if (!["new", "paid", "sent", "arrived", "done", "cancel"].includes(d.status)) return err(400, "bad status");
       upd.status = d.status;
     }
     if (d.carrier !== undefined) upd.carrier = ["cdek", "post", "other"].includes(d.carrier) ? d.carrier : null;
@@ -446,12 +469,13 @@ async function handle(req: Request): Promise<Response> {
     const uid = Number(o.user_id) || 0;
     const statusChanged = d.status !== undefined && d.status !== o.status;
     const trackChanged = d.track !== undefined && n.track && n.track !== o.track;
-    if (uid && (statusChanged || (trackChanged && n.status === "sent"))) {
+    if (uid && (statusChanged || (trackChanged && ["sent", "arrived"].includes(String(n.status))))) {
       const t = `заказ №${oid}`;
       const tr = n.track ? `\n\n${carrierName(n.carrier as string)}, трек-номер: <code>${escHtml(String(n.track))}</code>` +
         (trackUrl(n.carrier as string, n.track as string) ? `\nОтследить: ${trackUrl(n.carrier as string, n.track as string)}` : "") : "";
       const msg = n.status === "paid" ? `✅ Оплата получена, ${t} передан в работу. Сообщим, как только отправим.`
         : n.status === "sent" ? `📦 Ваш ${t} отправлен!${tr}`
+        : n.status === "arrived" ? arrivedText(oid, n, false)
         : n.status === "cancel" ? `Ваш ${t} отменён. Если это ошибка — напишите нам.`
         : n.status === "done" ? `Как вам покупка? 🤍\n\nОставьте короткий отзыв и, если не сложно, фото — это очень помогает другим с выбором размера.`
         : "";
@@ -459,6 +483,15 @@ async function handle(req: Request): Promise<Response> {
     }
     return json({ ok: true, notified: told, review_asked: told && n.status === "done" });
   }
+  if ((mm = path.match(/^\/api\/admin\/order\/(\d+)$/)) && m === "DELETE") {
+    const oid = Number(mm[1]);
+    const rv = must(await db.from("reviews").select("photos").eq("order_id", oid)) as Array<{ photos: string[] }>;
+    for (const r of rv) await removePhotos(r.photos ?? []);
+    must(await db.from("reviews").delete().eq("order_id", oid));
+    must(await db.from("orders").delete().eq("id", oid));
+    return json({ ok: true });
+  }
+
   if (path === "/api/admin/reviews" && m === "GET") {
     const r = must(await db.from("reviews").select("*, products(title)").order("id", { ascending: false }).limit(200)) as Array<Record<string, unknown>>;
     const out: Array<Record<string, unknown>> = r.map((v) => ({ ...v, product_title: (v.products as { title?: string } | null)?.title ?? null, photos: JSON.stringify(v.photos ?? []) }));
