@@ -201,6 +201,10 @@ img{max-width:100%}
 .lcard .disc{position:absolute;left:12px;top:12px;background:var(--sale);color:#fff;border-radius:8px;padding:3px 8px;font-size:12px;font-weight:800}
 .lcard.sm{width:150px;aspect-ratio:3/4}
 .lcard.sm .ov{padding:30px 10px 10px}.lcard.sm .ov b{font-size:14px}
+.dlv{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dlv button{display:flex;flex-direction:column;gap:3px;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:12px;color:var(--text);min-width:0}
+.dlv button b{font-size:14px}.dlv button span{font-size:12px;color:var(--hint);line-height:1.35}
+.dlv button.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:var(--accent-soft)}
 .litem{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
 .litem:last-child{border-bottom:0}
 .litem>button.ph{flex:none;border:0;padding:0;background:var(--surface2);border-radius:14px;overflow:hidden;width:84px;height:112px}
@@ -665,7 +669,7 @@ function openProduct(id, sel={}) {
       ${p.description?`<div class="lbl">Описание</div><p class="desc">${esc(p.description)}</p>`:''}
       <div class="perks">
         <div class="perk">${I.chat}<b>Менеджер</b>подтвердит наличие</div>
-        <div class="perk">${I.truck}<b>СДЭК</b>по всей России</div>
+        <div class="perk">${I.truck}<b>Доставка</b>СДЭК, Почта, 5Post</div>
         <div class="perk">${I.shield}<b>Новая</b>вещь с биркой</div>
       </div>
       ${inLooks.length?`<div class="lbl">Входит в образ</div><div class="similar">${inLooks.map(l=>lcard(l,'sm')).join('')}</div>`:''}
@@ -904,7 +908,7 @@ function renderCart() {
             <div class="qty"><button data-q="${x.k}" data-d="-1" aria-label="Меньше">−</button><span>${x.qty}</span><button data-q="${x.k}" data-d="1" aria-label="Больше">+</button></div></div></div></div>`).join('')
       + `<div class="total"><span>Итого · ${plural(lines.filter(x=>x.p.in_stock).reduce((a,x)=>a+x.qty,0),'вещь','вещи','вещей')}</span><b>${rub(total)}</b></div>
          ${partial.map(id=>`<div class="hintbox">${I.check}<span>Соберите образ «${esc(lookOf(id).title)}» целиком — и получите скидку ${lookOf(id).discount}% на все его вещи. <button class="textbtn" data-look="${id}">Открыть образ</button></span></div>`).join('')}
-         <p class="muted">Доставка СДЭК или Почтой России. Оплата — после того, как менеджер подтвердит наличие.</p>
+         <p class="muted">Доставка СДЭК, Почтой России, 5Post, а по Москве — Яндекс Доставкой в день заказа. Способ выберете при оформлении. Оплата — после того, как менеджер подтвердит наличие.</p>
          <div style="height:8px"></div><button class="btn" id="checkout" ${bad||!total?'disabled':''}>${bad?'Уберите закончившиеся вещи':'Оформить заказ'}</button>`
       : `<div class="empty"><b>В корзине пусто</b>Добавляйте вещи кнопкой «В корзину» в карточке товара — оформите всё одним заказом.</div>
          <button class="btn ghost" id="tocat">Перейти в каталог</button>`}
@@ -925,6 +929,7 @@ function openCheckout(st={}) {
   const total = lines.reduce((a, x) => a + linePrice(x) * x.qty, 0);
   const u = tg?.initDataUnsafe?.user;
   st.contact ??= 'tg';
+  st.delivery ??= '';
   st.name ??= u?.first_name || '';
   const tgText = u?.username ? `Менеджер напишет вам в Telegram: @${esc(u.username)}` : 'Менеджер напишет вам в Telegram в этот чат с ботом';
   $('#app').innerHTML = `
@@ -938,22 +943,30 @@ function openCheckout(st={}) {
       <div class="seg" style="margin:0"><button data-ct="tg" class="${st.contact==='tg'?'on':''}">Telegram</button><button data-ct="phone" class="${st.contact==='phone'?'on':''}">Телефон</button></div></div>
     ${st.contact==='tg' ? `<div class="hintbox">${I.chat}<span>${tgText}</span></div>`
       : `<div class="field"><label for="f_phone">Телефон</label><input id="f_phone" type="tel" autocomplete="tel" placeholder="+7" value="${esc(st.phone||'')}"></div>`}
-    <div class="field"><label for="f_city">Город доставки <i>необязательно</i></label><input id="f_city" value="${esc(st.city||'')}" placeholder="Например, Москва"></div>
+    <div class="field"><label>Способ доставки</label><div class="dlv">${DELIV.map(([k,t,d])=>`<button type="button" class="${st.delivery===k?'on':''}" data-dv="${k}" aria-pressed="${st.delivery===k}"><b>${t}</b><span>${d}</span></button>`).join('')}</div></div>
+    ${st.delivery==='yandex'
+      ? `<div class="hintbox">${I.truck}<span>Привезём сегодня по Москве. Менеджер подтвердит наличие и согласует время, стоимость доставки скажет заранее.</span></div>
+         <div class="field"><label for="f_addr">Адрес в Москве</label><input id="f_addr" autocomplete="street-address" value="${esc(st.address||'')}" placeholder="Улица, дом, квартира, подъезд"></div>`
+      : `<div class="field"><label for="f_city">Город доставки <i>необязательно</i></label><input id="f_city" value="${esc(st.city||'')}" placeholder="Например, Казань"></div>
+         ${st.delivery?`<div class="field"><label for="f_addr">${st.delivery==='post'?'Адрес или индекс отделения':'Адрес пункта выдачи'} <i>необязательно — можно уточнить с менеджером</i></label><input id="f_addr" value="${esc(st.address||'')}"></div>`:''}`}
     <div class="field"><label for="f_comment">Комментарий <i>необязательно</i></label><textarea id="f_comment" placeholder="Любые пожелания или вопросы">${esc(st.comment||'')}</textarea></div>
     <p class="muted">Оплата — после того, как менеджер подтвердит наличие и детали доставки. Статус и трек-номер появятся в разделе «Заказы».</p>
     <div class="buybar"><div class="in"><div class="p">${rub(total)}</div><button class="btn" id="send">Отправить заказ</button></div></div>`;
-  const stash = () => { st.name=$('#f_name').value; st.city=$('#f_city').value; st.comment=$('#f_comment').value; if($('#f_phone')) st.phone=$('#f_phone').value; };
+  const stash = () => { st.name=$('#f_name').value; if($('#f_city')) st.city=$('#f_city').value; st.comment=$('#f_comment').value; if($('#f_phone')) st.phone=$('#f_phone').value; if($('#f_addr')) st.address=$('#f_addr').value; };
   $('#bk') && ($('#bk').onclick = renderCart);
   $$('[data-ct]').forEach(b => b.onclick = () => { stash(); st.contact=b.dataset.ct; haptic(); openCheckout(st); });
+  $$('[data-dv]').forEach(b => b.onclick = () => { stash(); st.delivery=b.dataset.dv; haptic(); const y=scrollY; openCheckout(st); scrollTo(0,y); });
   $('#send').onclick = async () => {
     stash();
     const name = st.name.trim();
     if (!name) return toast('Напишите, как к вам обращаться');
     if (st.contact==='phone' && (st.phone||'').replace(/\D/g,'').length < 10) return toast('Проверьте номер телефона');
+    if (!st.delivery) return toast('Выберите способ доставки');
+    if (st.delivery==='yandex' && !(st.address||'').trim()) return toast('Укажите адрес в Москве для курьера');
     $('#send').disabled = true; $('#send').textContent = 'Отправляем…';
     try {
       const r = await api('/api/order', {method:'POST', json:{items: lines.map(x => ({product_id:x.pid, size:x.size, color:x.color, qty:x.qty, look:x.look||null})),
-        name, contact:st.contact, phone: st.contact==='phone' ? st.phone : '', city:st.city, comment:st.comment, source:SOURCE}});
+        name, contact:st.contact, phone: st.contact==='phone' ? st.phone : '', city: st.delivery==='yandex' ? 'Москва' : st.city, address: st.address||'', delivery: st.delivery, comment:st.comment, source:SOURCE}});
       try{ tg?.HapticFeedback?.notificationOccurred?.('success'); }catch(e){}
       S.cart = S.cart.filter(i => !lines.some(x => x.pid===i.pid && x.size===i.size && x.color===i.color && (x.look||null)===(i.look||null))); cartSave();
       setBack(null);
@@ -968,7 +981,8 @@ function openCheckout(st={}) {
 // ---------------------------------------------------------------- мои заказы
 const STC = {new:['Ждёт подтверждения','new'], paid:['Оплачен, собираем','paid'], sent:['В пути','sent'], arrived:['Можно забирать','arrived'], done:['Получен','paid'], cancel:['Отменён','cancel']};
 const STEP = {new:1, paid:2, sent:3, arrived:4, done:5, cancel:0};
-const CARRIER = {cdek:'СДЭК', post:'Почта России', other:'Доставка'};
+const CARRIER = {cdek:'СДЭК', post:'Почта России', '5post':'5Post', yandex:'Яндекс Доставка', other:'Доставка'};
+const DELIV = [['cdek','СДЭК','Пункт выдачи или курьер · по всей России'],['post','Почта России','В любое почтовое отделение · по всей России'],['5post','5Post','Пункт выдачи в «Пятёрочке» или «Перекрёстке»'],['yandex','Яндекс Доставка','Курьер в день заказа · только Москва']];
 function openLink(url) { try { if (tg?.openLink) return tg.openLink(url); } catch(e) {} window.open(url, '_blank'); }
 async function renderOrders() {
   S.view='orders'; setBack(renderShop);
@@ -987,11 +1001,12 @@ async function renderOrders() {
           <div class="steps-l"><span>Принят</span><span>Оплачен</span><span>В пути</span><span>Прибыл</span><span>Получен</span></div>` : ''}
         <div class="thumbs2">${(o.items||[]).map(i => i.photo ? `<img src="${img(i.photo)}" alt="${esc(i.title)}" data-open="${i.product_id}">` : '').join('')}</div>
         <div class="oitems">${(o.items||[]).map(i => `<span>${esc(i.title)}${i.qty>1?` × ${i.qty}`:''} <span class="muted">· ${[i.color, i.size && 'р. '+i.size].filter(Boolean).map(esc).join(' · ')}</span></span>`).join('')}</div>
-        ${o.status==='arrived' ? `<div class="hintbox" style="margin:0">${I.box}<span><b>Заказ ждёт вас в пункте выдачи${o.carrier==='post'?' Почты России':o.carrier==='cdek'?' СДЭК':''}.</b> Заберите его, пока не истёк срок хранения.</span></div>` : ''}
+        ${o.status==='arrived' ? `<div class="hintbox" style="margin:0">${I.box}<span><b>Заказ ждёт вас в пункте выдачи${o.carrier==='post'?' Почты России':o.carrier==='cdek'?' СДЭК':o.carrier==='5post'?' 5Post':''}.</b> Заберите его, пока не истёк срок хранения.</span></div>` : ''}
         ${o.track ? `<div class="trackbox"><span class="muted">${CARRIER[o.carrier]||'Доставка'} · трек-номер</span>
             <div class="num"><span>${esc(o.track)}</span><button class="iconbtn" style="width:36px;height:36px" data-copy="${esc(o.track)}" aria-label="Скопировать трек-номер">${I.copy}</button></div>
             ${o.track_url ? `<a href="${esc(o.track_url)}" data-link="${esc(o.track_url)}">Отследить на сайте ${CARRIER[o.carrier]} →</a>` : ''}</div>`
-          : (o.status==='paid' ? '<span class="muted">Трек-номер появится здесь сразу после отправки — пришлём его и в Telegram.</span>' : '')}
+          : (o.status==='paid' ? `<span class="muted">${o.delivery==='yandex'?'Курьер Яндекс Доставки привезёт заказ сегодня — менеджер согласует время.':'Трек-номер появится здесь сразу после отправки — пришлём его и в Telegram.'}</span>` : '')}
+        ${o.delivery&&!o.track?`<span class="muted">Доставка: ${CARRIER[o.delivery]||'—'}</span>`:''}
         ${['sent','arrived','done'].includes(o.status) && left.length ? `<button class="btn ghost" data-rev="${o.id}">${STAR} Оставить отзыв</button>` : ''}
       </div>`; }).join('')
     : `<div class="empty"><b>Заказов пока нет</b>Здесь будет статус каждого заказа и трек-номер для отслеживания.</div><button class="btn ghost" id="tocat">Перейти в каталог</button>`}
@@ -1267,9 +1282,10 @@ async function aOrders() {
       <div class="oitems">${items(o).map(i=>`<span>• ${esc(i.title)}${i.qty>1?` × ${i.qty}`:''} <span class="muted">${[i.color, i.size&&'р. '+i.size].filter(Boolean).map(esc).join(' · ')} · ${rub(i.price*(i.qty||1))}</span></span>`).join('')}</div>
       ${o.cost!=null?`<div class="muted">Маржа: <span class="good">${rub(o.price-o.cost)}</span></div>`:''}
       <div>${esc(o.name)} · ${who(o)}</div>
-      ${o.city||o.comment?`<div class="muted">${esc(o.city||'')}${o.comment?' · '+esc(o.comment):''}</div>`:''}
+      ${o.delivery?`<div><span class="mtag" style="margin:0">${esc(CARRIER[o.delivery]||o.delivery)}${o.delivery==='yandex'?' · сегодня':''}</span></div>`:''}
+      ${o.city||o.address||o.comment?`<div class="muted">${[o.city,o.address].filter(Boolean).map(esc).join(', ')}${o.comment?' · '+esc(o.comment):''}</div>`:''}
       <div class="orow" style="margin-top:6px"><select data-car="${o.id}" aria-label="Служба доставки">
-          <option value="cdek" ${o.carrier==='cdek'||!o.carrier?'selected':''}>СДЭК</option><option value="post" ${o.carrier==='post'?'selected':''}>Почта России</option><option value="other" ${o.carrier==='other'?'selected':''}>Другое</option></select>
+          ${['cdek','post','5post','yandex','other'].map(k=>`<option value="${k}" ${(o.carrier||o.delivery||'cdek')===k?'selected':''}>${k==='other'?'Другое':CARRIER[k]}</option>`).join('')}</select>
         <input data-tr="${o.id}" placeholder="Трек-номер" value="${esc(o.track||'')}" aria-label="Трек-номер"><button class="pill" data-trs="${o.id}">Сохранить</button></div>
       ${o.status==='arrived'?`<div class="muted">Напоминаний отправлено: ${o.reminders||0} из 2 (раз в 2 дня, в 11:17)</div>`:''}
       <div class="h"><span class="muted">${new Date(o.created_at*1000).toLocaleString('ru-RU')} · источник: ${esc(o.source)}</span>

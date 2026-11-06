@@ -105,7 +105,9 @@ async function send(chatId: number | null, text: string, opts: { product?: numbe
 
 // ---------------------------------------------------------------- доставка
 
-const carrierName = (c: string) => c === "cdek" ? "СДЭК" : c === "post" ? "Почта России" : "Доставка";
+const CARRIERS: Record<string, string> = { cdek: "СДЭК", post: "Почта России", "5post": "5Post", yandex: "Яндекс Доставка", other: "Доставка" };
+const carrierName = (c: string) => CARRIERS[c] ?? "Доставка";
+const DELIVERY: Record<string, string> = { cdek: "СДЭК", post: "Почта России", "5post": "5Post", yandex: "Яндекс Доставка (Москва, в день заказа)" };
 function trackUrl(carrier: string, track: string): string | null {
   if (!track) return null;
   const t = encodeURIComponent(track);
@@ -115,7 +117,7 @@ function trackUrl(carrier: string, track: string): string | null {
 }
 
 function arrivedText(oid: number, o: Record<string, unknown>, reminder: boolean) {
-  const where = o.carrier === "post" ? "в отделение Почты России" : o.carrier === "cdek" ? "в пункт выдачи СДЭК" : "в пункт выдачи";
+  const where = o.carrier === "post" ? "в отделение Почты России" : o.carrier === "cdek" ? "в пункт выдачи СДЭК" : o.carrier === "5post" ? "в пункт выдачи 5Post" : "в пункт выдачи";
   const tr = o.track ? `\nТрек-номер: <code>${escHtml(String(o.track))}</code>` +
     (trackUrl(o.carrier as string, o.track as string) ? `\n${trackUrl(o.carrier as string, o.track as string)}` : "") : "";
   return reminder
@@ -237,6 +239,9 @@ async function handle(req: Request): Promise<Response> {
     const phone = String(d.phone || "").trim().slice(0, 40);
     const contact = d.contact === "phone" ? "phone" : "tg";
     if (!name || (contact === "phone" && !phone) || (contact === "tg" && !user?.id)) return err(400, "name and contact required");
+    const delivery = DELIVERY[d.delivery] ? String(d.delivery) : "";
+    const address = String(d.address || "").trim().slice(0, 300);
+    if (delivery === "yandex" && !address) return err(400, "Для Яндекс Доставки укажите адрес в Москве");
     // корзина: [{product_id,size,color,qty}]; старый формат — одна вещь в корне запроса
     const raw: Array<Record<string, unknown>> = Array.isArray(d.items) && d.items.length ? d.items.slice(0, 20) : [d];
     const ids = [...new Set(raw.map((x) => intOrNull(x.product_id)).filter((x): x is number => x !== null))];
@@ -275,7 +280,8 @@ async function handle(req: Request): Promise<Response> {
       product_id: items[0].product_id,
       product_title: items.length > 1 ? `${items[0].title} + ещё ${pieces - items[0].qty}` : items[0].title,
       price: total, cost, items, size: items[0].size, color: items[0].color,
-      name, phone, contact, city: String(d.city || "").slice(0, 120), comment: String(d.comment || "").slice(0, 500),
+      name, phone, contact, city: delivery === "yandex" ? "Москва" : String(d.city || "").slice(0, 120), comment: String(d.comment || "").slice(0, 500),
+      delivery, address, carrier: delivery || null,
       user_id: user?.id ?? null, username: user?.username ?? null, source, updated_at: now(),
     }).select().single()) as Record<string, unknown>;
     await db.from("events").insert(items.map((i) => ({ type: "order", product_id: i.product_id, user_id: user?.id ?? null, source })));
@@ -286,7 +292,7 @@ async function handle(req: Request): Promise<Response> {
   // мои заказы
   if (path === "/api/my-orders" && m === "GET") {
     if (!user?.id) return json([]);
-    const r = must(await db.from("orders").select("id,items,price,status,carrier,track,city,created_at,updated_at")
+    const r = must(await db.from("orders").select("id,items,price,status,carrier,track,city,delivery,address,created_at,updated_at")
       .eq("user_id", user.id).order("id", { ascending: false }).limit(50)) as Array<Record<string, unknown>>;
     const rv = must(await db.from("reviews").select("order_id,product_id").eq("user_id", user.id)) as Array<{ order_id: number; product_id: number }>;
     const done = new Set(rv.map((x) => `${x.order_id}:${x.product_id}`));
@@ -519,7 +525,7 @@ async function handle(req: Request): Promise<Response> {
       if (!["new", "paid", "sent", "arrived", "done", "cancel"].includes(d.status)) return err(400, "bad status");
       upd.status = d.status;
     }
-    if (d.carrier !== undefined) upd.carrier = ["cdek", "post", "other"].includes(d.carrier) ? d.carrier : null;
+    if (d.carrier !== undefined) upd.carrier = ["cdek", "post", "5post", "yandex", "other"].includes(d.carrier) ? d.carrier : null;
     if (d.track !== undefined) upd.track = String(d.track || "").replace(/\s/g, "").slice(0, 40) || null;
     must(await db.from("orders").update(upd).eq("id", oid));
     const n = { ...o, ...upd };
@@ -587,7 +593,8 @@ async function notifyAdmins(o: Record<string, unknown>) {
     (i.look_title ? `\n    образ: «${escHtml(String(i.look_title))}»${Number(i.base_price) > Number(i.price) ? ` (скидка, было ${rub(Number(i.base_price) * Number(i.qty))})` : ""}` : "")).join("\n");
   const margin = o.cost !== null && o.cost !== undefined ? `\nМаржа: ${rub(Number(o.price) - Number(o.cost))}` : "";
   const text = `🛍 <b>Новый заказ #${o.id}</b>\n\n${items}\n\n<b>Итого: ${rub(Number(o.price))}</b>${margin}\n\n` +
-    `Имя: ${escHtml(String(o.name))}\nСвязь: ${who}\nГород: ${escHtml(String(o.city || "—"))}\n` +
+    `Имя: ${escHtml(String(o.name))}\nСвязь: ${who}\nДоставка: <b>${escHtml(DELIVERY[String(o.delivery)] ?? "не выбрана")}</b>\n` +
+    `Город: ${escHtml(String(o.city || "—"))}${o.address ? `\nАдрес: ${escHtml(String(o.address))}` : ""}\n` +
     `Комментарий: ${escHtml(String(o.comment || "—"))}\n\nИсточник: ${escHtml(String(o.source))}`;
   for (const aid of ADMIN_IDS) await send(aid, text);
 }
