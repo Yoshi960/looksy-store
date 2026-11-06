@@ -270,6 +270,44 @@ h2.sec2{font:800 16px var(--display);margin:22px 0 10px}
 .st.new{background:var(--st-new-bg);color:var(--st-new)}.st.paid{background:var(--st-paid-bg);color:var(--st-paid)}.st.sent{background:var(--st-sent-bg);color:var(--st-sent)}.st.cancel{background:var(--st-cancel-bg);color:var(--st-cancel)}
 .code{font-size:12px;color:var(--hint);padding:4px 0;user-select:all;word-break:break-all}
 .toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:12px;z-index:40;font-size:14px;font-weight:600;max-width:90vw;text-align:center}
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:12;background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+.nav .in{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.nav button{border:0;background:none;color:var(--hint);display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 8px;font-size:11px;font-weight:700;position:relative}
+.nav button.on{color:var(--text)}
+.nav button.on .ico{color:var(--accent)}
+.nav .badge{top:3px;right:calc(50% - 22px)}
+[hidden]{display:none!important}
+.citem2{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.citem2 img,.citem2 i{width:76px;height:100px;border-radius:12px;object-fit:cover;background:var(--surface2);flex:none}
+.citem2 .g{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.citem2 .t{font-weight:700;font-size:14px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.citem2 .row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto}
+.citem2 .pr{font:800 15px var(--display);font-variant-numeric:tabular-nums}
+.qty{display:flex;align-items:center;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.qty button{width:36px;height:34px;border:0;background:var(--surface);color:var(--text);font-size:18px;font-weight:700}
+.qty span{min-width:28px;text-align:center;font-weight:800;font-variant-numeric:tabular-nums}
+.rm{border:0;background:none;color:var(--hint);font-size:12px;font-weight:700;padding:4px 0;align-self:flex-start}
+.warn{color:var(--sale);font-size:12px;font-weight:700}
+.total{display:flex;justify-content:space-between;align-items:baseline;padding:16px 0 4px;font-weight:700}
+.total b{font:800 22px var(--display);font-variant-numeric:tabular-nums}
+.oc{background:var(--surface);border-radius:18px;padding:16px;margin-bottom:12px;display:flex;flex-direction:column;gap:12px}
+.oc .h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.oc .h b{font:800 16px var(--display)}
+.pillst{border-radius:999px;padding:4px 10px;font-size:12px;font-weight:800;white-space:nowrap}
+.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.steps div{height:4px;border-radius:2px;background:var(--surface2)}
+.steps div.on{background:var(--accent)}
+.steps-l{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;font-size:11px;color:var(--hint);margin-top:-6px}
+.oc .thumbs2{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.oc .thumbs2 img{width:52px;height:68px;border-radius:10px;object-fit:cover;flex:none;background:var(--surface2)}
+.trackbox{background:var(--bg);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.trackbox .num{display:flex;align-items:center;justify-content:space-between;gap:8px;font:700 15px var(--body);font-variant-numeric:tabular-nums;word-break:break-all}
+.trackbox a{color:var(--accent);font-weight:700;text-decoration:none}
+.orow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center}
+.orow select,.orow input{border:1px solid var(--line);border-radius:12px;padding:10px 8px;background:var(--bg);color:var(--text);min-width:0;font-variant-numeric:tabular-nums}
+.orow select{max-width:118px}
+.oitems{display:flex;flex-direction:column;gap:2px;font-size:14px}
 .admin-fab{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:9;background:var(--text);color:var(--bg);border:0;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.18)}
 </style>
 </head>
@@ -306,6 +344,10 @@ const I = {
   chat:'<svg class="ico" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
   truck:'<svg class="ico" viewBox="0 0 24 24"><path d="M3 6h11v10H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>',
   heart:'<svg class="ico" viewBox="0 0 24 24"><path d="M12 20s-7.2-4.5-9.2-9.1A5.1 5.1 0 0 1 12 6.1a5.1 5.1 0 0 1 9.2 4.8C19.2 15.5 12 20 12 20z"/></svg>',
+  bag:'<svg class="ico" viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
+  grid:'<svg class="ico" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>',
+  box:'<svg class="ico" viewBox="0 0 24 24"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg>',
+  copy:'<svg class="ico" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
   shield:'<svg class="ico" viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4.4 3 7.8 7 9 4-1.2 7-4.6 7-9V6z"/><path d="m9 12 2 2 4-4"/></svg>',
 };
 const STAR = '<svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>';
@@ -359,6 +401,42 @@ async function shrink(file, max=1280) {
     const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.85));
     return blob ? new File([blob], 'photo.jpg', {type:'image/jpeg'}) : file;
   } catch(e) { return file; }
+}
+
+// ---------- корзина (хранится в Telegram у покупателя, запасной вариант — в браузере)
+const CART_KEY = 'looksy_cart';
+async function cartLoad() {
+  let v = null;
+  try { if (tg?.CloudStorage) v = await new Promise(r => tg.CloudStorage.getItem(CART_KEY, (e, x) => r(e ? null : x))); } catch(e) {}
+  if (!v) try { v = localStorage.getItem(CART_KEY); } catch(e) {}
+  try { S.cart = (JSON.parse(v || '[]') || []).filter(i => S.products.some(p => p.id === i.pid)); } catch(e) { S.cart = []; }
+}
+function cartSave() {
+  const v = JSON.stringify(S.cart);
+  try { localStorage.setItem(CART_KEY, v); } catch(e) {}
+  try { tg?.CloudStorage?.setItem(CART_KEY, v, () => {}); } catch(e) {}
+  const n = cartCount(); $$('.cartcnt').forEach(b => { b.textContent = n; b.hidden = !n; });
+}
+const cartCount = () => S.cart.reduce((a, i) => a + i.qty, 0);
+const cartLine = i => S.products.find(p => p.id === i.pid);
+function cartAdd(p, sel) {
+  const ex = S.cart.find(i => i.pid === p.id && i.size === (sel.size||'') && i.color === (sel.color||''));
+  if (ex) ex.qty = Math.min(10, ex.qty + 1); else S.cart.push({pid:p.id, size:sel.size||'', color:sel.color||'', qty:1});
+  cartSave();
+}
+
+// ---------- нижнее меню
+function nav(active) {
+  const fc = S.favs.size, cc = cartCount();
+  return `<nav class="nav"><div class="in">
+    <button data-nav="shop" class="${active==='shop'?'on':''}">${I.grid}Каталог</button>
+    <button data-nav="favs" class="${active==='favs'?'on':''}">${I.heart}Избранное<span class="badge" id="favcnt" ${fc?'':'hidden'}>${fc}</span></button>
+    <button data-nav="cart" class="${active==='cart'?'on':''}">${I.bag}Корзина<span class="badge cartcnt" ${cc?'':'hidden'}>${cc}</span></button>
+    <button data-nav="orders" class="${active==='orders'?'on':''}">${I.box}Заказы</button></div></nav>`;
+}
+function bindNav() {
+  $$('[data-nav]').forEach(b => b.onclick = () => { haptic(); window.scrollTo(0,0);
+    ({shop:renderShop, favs:renderFavs, cart:renderCart, orders:renderOrders})[b.dataset.nav](); });
 }
 
 // ---------- избранное
@@ -420,8 +498,7 @@ function renderShop() {
   $('#app').innerHTML = `
     <div class="top">${LOGO}
       ${S.admin?`<button class="iconbtn" id="b_admin" aria-label="Админка">${I.gear}</button>`:''}
-      <button class="iconbtn" id="b_search" aria-label="Поиск">${I.search}</button>
-      <button class="iconbtn" id="b_favs" aria-label="Избранное">${I.heart}<span class="badge" id="favcnt" ${S.favs.size?'':'hidden'}>${S.favs.size}</span></button></div>
+      <button class="iconbtn" id="b_search" aria-label="Поиск">${I.search}</button></div>
     ${S.searching ? `<div class="search">${I.search}<input id="q" placeholder="Шуба, дублёнка, тренч…" value="${esc(S.q)}" autocomplete="off" aria-label="Поиск по товарам"><button class="iconbtn" style="width:34px;height:34px;border:0;background:none" id="q_x" aria-label="Закрыть поиск">${I.x}</button></div>` : ''}
     ${S.q ? '' : `<div class="seg">${GROUPS.map(([k,t])=>`<button data-g="${k}" class="${S.grp===k?'on':''}">${t}</button>`).join('')}</div>
     ${hits.length ? `<div class="hero-h"><h2>Выбор недели</h2></div><div class="hero">${hits.map(p=>`
@@ -437,7 +514,7 @@ function renderShop() {
       <button class="pill" id="b_filter">${I.filter}Фильтры${fo?`<b>${fo}</b>`:''}</button></div>
     ${l.length ? `<div class="grid">${l.map(card).join('')}</div>`
       : `<div class="empty"><b>Ничего не нашли</b>${fo||S.q?'Попробуйте убрать фильтры или изменить запрос':'Скоро здесь появятся новинки'}</div>`}
-`;
+    ${nav('shop')}`;
   $('#b_search').onclick = () => { S.searching = true; renderShop(); setTimeout(()=>$('#q')?.focus(),50); };
   if ($('#q')) { $('#q').oninput = e => { S.q = e.target.value.trim(); const pos=e.target.selectionStart; renderShop(); const q=$('#q'); q.focus(); q.setSelectionRange(pos,pos); }; $('#q_x').onclick = closeSearch; }
   $$('[data-g]').forEach(b => b.onclick = () => { S.grp=b.dataset.g; S.cat=null; haptic(); renderShop(); });
@@ -445,7 +522,7 @@ function renderShop() {
   $('#allcats') && ($('#allcats').onclick = catSheet);
   $('#b_filter').onclick = filterSheet;
   bindCards();
-  $('#b_favs').onclick = renderFavs;
+  bindNav();
   $('#b_admin') && ($('#b_admin').onclick = () => { S.view='admin'; renderAdmin(); });
 }
 function closeSearch(){ S.searching=false; S.q=''; renderShop(); }
@@ -459,12 +536,11 @@ function card(p) {
 function renderFavs() {
   S.view='favs'; setBack(renderShop); window.scrollTo(0,0);
   const l = S.products.filter(p => S.favs.has(p.id));
-  $('#app').innerHTML = `${tg?'':`<button class="linkback" id="bk">${I.back}Каталог</button>`}
-    <h1 class="page">Избранное</h1>
+  $('#app').innerHTML = `<h1 class="page">Избранное</h1>
     ${l.length ? `<p class="muted" style="margin:-8px 0 16px">Напишем в Telegram, если вещь подешевеет или снова появится в наличии.</p><div class="grid">${l.map(card).join('')}</div>`
       : `<div class="empty"><b>Пока пусто</b>Нажмите на сердечко у вещи — мы напишем в Telegram, если она подешевеет или снова появится в наличии.</div>
-         <button class="btn ghost" id="tocat">Перейти в каталог</button>`}`;
-  $('#bk') && ($('#bk').onclick = renderShop);
+         <button class="btn ghost" id="tocat">Перейти в каталог</button>`}${nav('favs')}`;
+  bindNav();
   $('#tocat') && ($('#tocat').onclick = renderShop);
   bindCards();
   $$('[data-fav]').forEach(b => { const f=b.onclick; b.onclick = async e => { await f(e); if (!S.favs.has(+b.dataset.fav)) setTimeout(renderFavs, 300); }; });
@@ -549,7 +625,8 @@ function openProduct(id, sel={}) {
       ${similar.length?`<div class="lbl">Похожие</div><div class="similar">${similar.map(card).join('')}</div>`:''}
     </div>
     <div class="buybar"><div class="in"><div class="p">${rub(p.price)}${p.old_price>p.price?`<span class="old">${rub(p.old_price)}</span>`:''}</div>
-      <button class="btn" id="buy" ${p.in_stock?'':'disabled'}>${p.in_stock?'Заказать':'Нет в наличии'}</button></div></div>`;
+      ${inCart(p, sel) ? `<button class="btn ghost" id="tocart">${I.check}В корзине — оформить</button>`
+        : `<button class="btn" id="buy" ${p.in_stock?'':'disabled'}>${p.in_stock?I.bag+'В корзину':'Нет в наличии'}</button>`}</div></div>`;
   $('#bk') && ($('#bk').onclick = renderShop);
   $('#shr').onclick = () => share(p);
   $('#szh') && ($('#szh').onclick = sizeSheet);
@@ -557,13 +634,18 @@ function openProduct(id, sel={}) {
   $$('.opt[data-k]').forEach(b => b.onclick = () => { sel[b.dataset.k] = b.dataset.v; haptic(); const y=scrollY; openProduct(id, sel); scrollTo(0,y); });
   bindCards($('#app'));
   if (p.rating) loadReviews(p);
-  $('#buy').onclick = () => {
+  $('#tocart') && ($('#tocart').onclick = renderCart);
+  $('#buy') && ($('#buy').onclick = () => {
     if (p.colors.length > 1 && !sel.color) return toast('Выберите цвет');
     if (p.sizes.length > 1 && !sel.size) return toast('Выберите размер');
     sel.color ??= p.colors[0]; sel.size ??= p.sizes[0];
-    track('order_click', id); openForm(p, sel);
-  };
+    track('order_click', id); cartAdd(p, sel);
+    try{ tg?.HapticFeedback?.notificationOccurred?.('success'); }catch(e){}
+    toast(`Добавили в корзину · ${plural(cartCount(),'вещь','вещи','вещей')}`);
+    const y = scrollY; openProduct(id, sel); scrollTo(0, y);
+  });
 }
+const inCart = (p, sel) => S.cart.some(i => i.pid === p.id && (!p.sizes.length || i.size === (sel.size || (p.sizes.length===1?p.sizes[0]:null))) && (!p.colors.length || i.color === (sel.color || (p.colors.length===1?p.colors[0]:null))));
 
 // Листание галереи строго по одному фото: короткий свайп — следующее, сильный — тоже только одно.
 function gallery(trk, n) {
@@ -623,12 +705,22 @@ async function loadReviews(p) {
 }
 
 // ---------- форма отзыва
-async function renderReview(oid) {
-  setBack(renderShop); window.scrollTo(0,0);
+async function renderReview(oid, pid) {
+  setBack(renderOrders); window.scrollTo(0,0);
   let o;
   try { o = await api('/api/review/order/'+oid); } catch(e) { toast('Заказ не найден'); return renderShop(); }
-  const p = S.products.find(x=>x.id===o.product_id);
-  if (o.reviewed) { $('#app').innerHTML = `<div class="ok"><div class="ring">${I.check}</div><h1 class="page">Отзыв уже есть</h1><p class="muted">Спасибо, что поделились впечатлениями!</p><button class="btn ghost" id="home">В каталог</button></div>`; $('#home').onclick=renderShop; return; }
+  const left = o.items.filter(i => !i.reviewed);
+  if (!left.length) { $('#app').innerHTML = `<div class="ok"><div class="ring">${I.check}</div><h1 class="page">Отзыв уже есть</h1><p class="muted">Спасибо, что поделились впечатлениями!</p><button class="btn ghost" id="home">В каталог</button></div>`; $('#home').onclick=renderShop; return; }
+  const item = left.find(i => i.product_id === pid) || (left.length === 1 ? left[0] : null);
+  if (!item) {
+    $('#app').innerHTML = `<h1 class="page">О какой вещи отзыв?</h1>
+      ${left.map(i => `<button class="lrow" data-pick="${i.product_id}">${i.photo?`<img src="${img(i.photo)}" alt="">`:'<i></i>'}<div class="g"><div class="t">${esc(i.title)}</div>
+        <div class="muted">${[i.color, i.size && 'размер '+i.size].filter(Boolean).map(esc).join(' · ')}</div></div>›</button>`).join('')}`;
+    $$('[data-pick]').forEach(b => b.onclick = () => renderReview(oid, +b.dataset.pick));
+    return;
+  }
+  o = {...o, product_id:item.product_id, product_title:item.title, size:item.size, color:item.color};
+  const p = S.products.find(x=>x.id===o.product_id) || {photos:[item.photo].filter(Boolean)};
   const st = {rating:0, fit:null, files:[]};
   const draw = () => {
     const txt = $('#r_text')?.value || '';
@@ -648,32 +740,65 @@ async function renderReview(oid) {
     $$('[data-n]').forEach(b => b.onclick = () => { st.files.splice(+b.dataset.n,1); draw(); });
     $('#r_send').onclick = async () => {
       const fd = new FormData();
-      fd.append('order_id', oid); fd.append('rating', st.rating); fd.append('fit', st.fit||''); fd.append('text', $('#r_text').value);
+      fd.append('order_id', oid); fd.append('product_id', item.product_id); fd.append('rating', st.rating); fd.append('fit', st.fit||''); fd.append('text', $('#r_text').value);
       for (const f of st.files) { const x = await shrink(f); fd.append('photos', x, x.name); }
       $('#r_send').disabled = true; $('#r_send').textContent = 'Отправляем…';
       try {
         await api('/api/review', {method:'POST', body:fd});
         setBack(null);
         $('#app').innerHTML = `<div class="ok"><div class="ring">${I.check}</div><h1 class="page">Спасибо за отзыв!</h1>
-          <p class="muted">Он появится в карточке товара после проверки.</p><button class="btn ghost" id="home">В каталог</button></div>`;
-        $('#home').onclick = renderShop;
+          <p class="muted">Он появится в карточке товара после проверки.</p><button class="btn ghost" id="home">${left.length>1?'Оценить другие вещи':'В каталог'}</button></div>`;
+        $('#home').onclick = left.length>1 ? () => renderReview(oid) : renderShop;
       } catch(e) { toast('Не отправилось, попробуйте ещё раз'); $('#r_send').disabled=false; $('#r_send').textContent='Отправить отзыв'; }
     };
   };
   draw();
 }
 
-function openForm(p, sel, st={}) {
-  window.scrollTo(0,0); setBack(() => openProduct(p.id, sel));
+// ---------------------------------------------------------------- корзина
+function renderCart() {
+  S.view='cart'; setBack(renderShop);
+  const lines = S.cart.map((i, k) => ({...i, k, p: cartLine(i)})).filter(x => x.p);
+  const total = lines.filter(x => x.p.in_stock).reduce((a, x) => a + x.p.price * x.qty, 0);
+  const bad = lines.some(x => !x.p.in_stock);
+  $('#app').innerHTML = `<h1 class="page">Корзина</h1>
+    ${lines.length ? lines.map(x => `<div class="citem2">
+        ${x.p.photos[0]?`<img src="${img(x.p.photos[0])}" alt="" data-open="${x.p.id}">`:'<i></i>'}
+        <div class="g"><div class="t" data-open="${x.p.id}">${esc(x.p.title)}</div>
+          <div class="muted">${[x.color, x.size && 'размер '+x.size].filter(Boolean).map(esc).join(' · ')}</div>
+          ${x.p.in_stock?'':'<span class="warn">Закончился — уберите из корзины</span>'}
+          <button class="rm" data-rm="${x.k}">Удалить</button>
+          <div class="row"><span class="pr">${rub(x.p.price*x.qty)}</span>
+            <div class="qty"><button data-q="${x.k}" data-d="-1" aria-label="Меньше">−</button><span>${x.qty}</span><button data-q="${x.k}" data-d="1" aria-label="Больше">+</button></div></div></div></div>`).join('')
+      + `<div class="total"><span>Итого · ${plural(lines.filter(x=>x.p.in_stock).reduce((a,x)=>a+x.qty,0),'вещь','вещи','вещей')}</span><b>${rub(total)}</b></div>
+         <p class="muted">Доставка СДЭК или Почтой России. Оплата — после того, как менеджер подтвердит наличие.</p>
+         <div style="height:8px"></div><button class="btn" id="checkout" ${bad||!total?'disabled':''}>${bad?'Уберите закончившиеся вещи':'Оформить заказ'}</button>`
+      : `<div class="empty"><b>В корзине пусто</b>Добавляйте вещи кнопкой «В корзину» в карточке товара — оформите всё одним заказом.</div>
+         <button class="btn ghost" id="tocat">Перейти в каталог</button>`}
+    ${nav('cart')}`;
+  bindNav();
+  $('#tocat') && ($('#tocat').onclick = renderShop);
+  $$('[data-open]').forEach(b => b.onclick = () => openProduct(+b.dataset.open));
+  $$('[data-q]').forEach(b => b.onclick = () => { const it = S.cart[+b.dataset.q]; it.qty = Math.max(1, Math.min(10, it.qty + (+b.dataset.d))); haptic(); cartSave(); renderCart(); });
+  $$('[data-rm]').forEach(b => b.onclick = () => { S.cart.splice(+b.dataset.rm, 1); haptic(); cartSave(); renderCart(); });
+  $('#checkout') && ($('#checkout').onclick = () => openCheckout());
+}
+
+function openCheckout(st={}) {
+  window.scrollTo(0,0); setBack(renderCart);
+  const lines = S.cart.map(i => ({...i, p: cartLine(i)})).filter(x => x.p && x.p.in_stock);
+  if (!lines.length) return renderCart();
+  const total = lines.reduce((a, x) => a + x.p.price * x.qty, 0);
   const u = tg?.initDataUnsafe?.user;
-  st.contact ??= tg || !u ? 'tg' : 'tg';
+  st.contact ??= 'tg';
   st.name ??= u?.first_name || '';
   const tgText = u?.username ? `Менеджер напишет вам в Telegram: @${esc(u.username)}` : 'Менеджер напишет вам в Telegram в этот чат с ботом';
   $('#app').innerHTML = `
-    ${tg?'':`<button class="linkback" id="bk">${I.back}Назад</button>`}
+    ${tg?'':`<button class="linkback" id="bk">${I.back}Корзина</button>`}
     <h1 class="page">Оформление</h1>
-    <div class="mini"><img src="${img(p.photos[0])}" alt=""><div class="g"><b>${esc(p.title)}</b>
-      <div class="muted">${[sel.color, sel.size && 'размер '+sel.size].filter(Boolean).map(esc).join(' · ')}</div></div><b>${rub(p.price)}</b></div>
+    <div class="mini" style="flex-direction:column;align-items:stretch;gap:8px">${lines.map(x => `<div style="display:flex;gap:10px;align-items:center">
+      <img src="${img(x.p.photos[0])}" alt="" style="width:44px;height:58px"><div class="g"><b style="font-size:14px">${esc(x.p.title)}</b>
+      <div class="muted">${[x.color, x.size && 'размер '+x.size, x.qty>1 && x.qty+' шт.'].filter(Boolean).map(esc).join(' · ')}</div></div><b>${rub(x.p.price*x.qty)}</b></div>`).join('')}</div>
     <div class="field"><label for="f_name">Как к вам обращаться</label><input id="f_name" autocomplete="given-name" value="${esc(st.name)}"></div>
     <div class="field"><label>Как с вами связаться</label>
       <div class="seg" style="margin:0"><button data-ct="tg" class="${st.contact==='tg'?'on':''}">Telegram</button><button data-ct="phone" class="${st.contact==='phone'?'on':''}">Телефон</button></div></div>
@@ -681,11 +806,11 @@ function openForm(p, sel, st={}) {
       : `<div class="field"><label for="f_phone">Телефон</label><input id="f_phone" type="tel" autocomplete="tel" placeholder="+7" value="${esc(st.phone||'')}"></div>`}
     <div class="field"><label for="f_city">Город доставки <i>необязательно</i></label><input id="f_city" value="${esc(st.city||'')}" placeholder="Например, Москва"></div>
     <div class="field"><label for="f_comment">Комментарий <i>необязательно</i></label><textarea id="f_comment" placeholder="Любые пожелания или вопросы">${esc(st.comment||'')}</textarea></div>
-    <p class="muted">Оплата — после того, как менеджер подтвердит наличие и детали доставки.</p>
-    <div class="buybar"><div class="in"><div class="p">${rub(p.price)}</div><button class="btn" id="send">Отправить заказ</button></div></div>`;
+    <p class="muted">Оплата — после того, как менеджер подтвердит наличие и детали доставки. Статус и трек-номер появятся в разделе «Заказы».</p>
+    <div class="buybar"><div class="in"><div class="p">${rub(total)}</div><button class="btn" id="send">Отправить заказ</button></div></div>`;
   const stash = () => { st.name=$('#f_name').value; st.city=$('#f_city').value; st.comment=$('#f_comment').value; if($('#f_phone')) st.phone=$('#f_phone').value; };
-  $('#bk') && ($('#bk').onclick = () => openProduct(p.id, sel));
-  $$('[data-ct]').forEach(b => b.onclick = () => { stash(); st.contact=b.dataset.ct; haptic(); openForm(p, sel, st); });
+  $('#bk') && ($('#bk').onclick = renderCart);
+  $$('[data-ct]').forEach(b => b.onclick = () => { stash(); st.contact=b.dataset.ct; haptic(); openCheckout(st); });
   $('#send').onclick = async () => {
     stash();
     const name = st.name.trim();
@@ -693,16 +818,55 @@ function openForm(p, sel, st={}) {
     if (st.contact==='phone' && (st.phone||'').replace(/\D/g,'').length < 10) return toast('Проверьте номер телефона');
     $('#send').disabled = true; $('#send').textContent = 'Отправляем…';
     try {
-      await api('/api/order', {method:'POST', json:{product_id:p.id, size:sel.size, color:sel.color, name, contact:st.contact,
-        phone: st.contact==='phone' ? st.phone : '', city:st.city, comment:st.comment, source:SOURCE}});
+      const r = await api('/api/order', {method:'POST', json:{items: lines.map(x => ({product_id:x.pid, size:x.size, color:x.color, qty:x.qty})),
+        name, contact:st.contact, phone: st.contact==='phone' ? st.phone : '', city:st.city, comment:st.comment, source:SOURCE}});
       try{ tg?.HapticFeedback?.notificationOccurred?.('success'); }catch(e){}
+      S.cart = S.cart.filter(i => !lines.some(x => x.pid===i.pid && x.size===i.size && x.color===i.color)); cartSave();
       setBack(null);
-      $('#app').innerHTML = `<div class="ok"><div class="ring">${I.check}</div><h1 class="page">Заказ принят</h1>
-        <p class="muted">${st.contact==='tg' ? 'Менеджер напишет вам в Telegram' : 'Менеджер позвонит или напишет вам'}, подтвердит наличие и детали доставки.</p>
-        <div style="height:16px"></div><button class="btn ghost" id="home">Вернуться в каталог</button></div>`;
-      $('#home').onclick = renderShop;
-    } catch(e) { toast('Не отправилось. Проверьте интернет и попробуйте ещё раз'); $('#send').disabled = false; $('#send').textContent = 'Отправить заказ'; }
+      $('#app').innerHTML = `<div class="ok"><div class="ring">${I.check}</div><h1 class="page">Заказ №${r.order_id} принят</h1>
+        <p class="muted">${st.contact==='tg' ? 'Менеджер напишет вам в Telegram' : 'Менеджер позвонит или напишет вам'}, подтвердит наличие и детали доставки. Статус заказа и трек-номер — в разделе «Заказы».</p>
+        <div style="height:16px"></div><div class="row2"><button class="btn ghost" id="home">В каталог</button><button class="btn" id="myo">Мои заказы</button></div></div>`;
+      $('#home').onclick = renderShop; $('#myo').onclick = renderOrders;
+    } catch(e) { toast(/закончился|не продаётся/.test(e.message) ? e.message : 'Не отправилось. Проверьте интернет и попробуйте ещё раз'); $('#send').disabled = false; $('#send').textContent = 'Отправить заказ'; }
   };
+}
+
+// ---------------------------------------------------------------- мои заказы
+const STC = {new:['Ждёт подтверждения','new'], paid:['Оплачен, собираем','paid'], sent:['В пути','sent'], done:['Получен','paid'], cancel:['Отменён','cancel']};
+const STEP = {new:1, paid:2, sent:3, done:4, cancel:0};
+const CARRIER = {cdek:'СДЭК', post:'Почта России', other:'Доставка'};
+function openLink(url) { try { if (tg?.openLink) return tg.openLink(url); } catch(e) {} window.open(url, '_blank'); }
+async function renderOrders() {
+  S.view='orders'; setBack(renderShop);
+  $('#app').innerHTML = `<h1 class="page">Мои заказы</h1><div class="sk" style="height:180px;margin-bottom:12px"></div><div class="sk" style="height:180px"></div>${nav('orders')}`;
+  bindNav();
+  let list = [];
+  try { list = await api('/api/my-orders'); } catch(e) {}
+  if (S.view !== 'orders') return;
+  $('#app').innerHTML = `<h1 class="page">Мои заказы</h1>
+    ${list.length ? list.map(o => { const [label, cls] = STC[o.status] || STC.new, step = STEP[o.status] ?? 1;
+      const left = (o.items||[]).filter(i => !i.reviewed);
+      return `<div class="oc">
+        <div class="h"><div><b>№${o.id}</b><div class="muted">${new Date(o.created_at*1000).toLocaleDateString('ru-RU',{day:'numeric',month:'long'})} · ${rub(o.price)}</div></div>
+          <span class="pillst st ${cls}">${label}</span></div>
+        ${o.status!=='cancel' ? `<div class="steps">${[1,2,3,4].map(n=>`<div class="${n<=step?'on':''}"></div>`).join('')}</div>
+          <div class="steps-l"><span>Принят</span><span>Оплачен</span><span>В пути</span><span>Получен</span></div>` : ''}
+        <div class="thumbs2">${(o.items||[]).map(i => i.photo ? `<img src="${img(i.photo)}" alt="${esc(i.title)}" data-open="${i.product_id}">` : '').join('')}</div>
+        <div class="oitems">${(o.items||[]).map(i => `<span>${esc(i.title)}${i.qty>1?` × ${i.qty}`:''} <span class="muted">· ${[i.color, i.size && 'р. '+i.size].filter(Boolean).map(esc).join(' · ')}</span></span>`).join('')}</div>
+        ${o.track ? `<div class="trackbox"><span class="muted">${CARRIER[o.carrier]||'Доставка'} · трек-номер</span>
+            <div class="num"><span>${esc(o.track)}</span><button class="iconbtn" style="width:36px;height:36px" data-copy="${esc(o.track)}" aria-label="Скопировать трек-номер">${I.copy}</button></div>
+            ${o.track_url ? `<a href="${esc(o.track_url)}" data-link="${esc(o.track_url)}">Отследить на сайте ${CARRIER[o.carrier]} →</a>` : ''}</div>`
+          : (o.status==='paid' ? '<span class="muted">Трек-номер появится здесь сразу после отправки — пришлём его и в Telegram.</span>' : '')}
+        ${['sent','done'].includes(o.status) && left.length ? `<button class="btn ghost" data-rev="${o.id}">${STAR} Оставить отзыв</button>` : ''}
+      </div>`; }).join('')
+    : `<div class="empty"><b>Заказов пока нет</b>Здесь будет статус каждого заказа и трек-номер для отслеживания.</div><button class="btn ghost" id="tocat">Перейти в каталог</button>`}
+    ${nav('orders')}`;
+  bindNav();
+  $('#tocat') && ($('#tocat').onclick = renderShop);
+  $$('[data-open]').forEach(b => b.onclick = () => openProduct(+b.dataset.open));
+  $$('[data-copy]').forEach(b => b.onclick = () => navigator.clipboard?.writeText(b.dataset.copy).then(()=>toast('Трек-номер скопирован'), ()=>toast(b.dataset.copy)));
+  $$('[data-link]').forEach(a => a.onclick = e => { e.preventDefault(); openLink(a.dataset.link); });
+  $$('[data-rev]').forEach(b => b.onclick = () => renderReview(+b.dataset.rev));
 }
 
 // ---------------------------------------------------------------- админка
@@ -881,17 +1045,28 @@ async function aOrders() {
   const orders = await api('/api/admin/orders');
   const who = o => o.contact==='phone' ? `тел. <span style="user-select:all">${esc(o.phone)}</span>`
     : (o.username ? `<a href="https://t.me/${esc(o.username)}">@${esc(o.username)}</a>` : (o.user_id ? `<a href="tg://user?id=${o.user_id}">написать в Telegram</a>` : 'Telegram'));
+  const items = o => (o.items && o.items.length ? o.items : [{title:o.product_title, price:o.price, qty:1, size:o.size, color:o.color}]);
   $('#pane').innerHTML = orders.length ? orders.map(o=>`<div class="ord">
-      <div class="h"><b>#${o.id} · ${esc(o.product_title)}</b>
+      <div class="h"><b>#${o.id} · ${rub(o.price)}</b>
         <select data-o="${o.id}" class="st ${o.status}" aria-label="Статус заказа">${Object.entries(ST).map(([k,t])=>`<option value="${k}" ${o.status===k?'selected':''}>${t}</option>`).join('')}</select></div>
-      <div>${rub(o.price)} <span class="muted">· ${[o.color, o.size&&'р. '+o.size].filter(Boolean).map(esc).join(' · ')}</span></div>
+      <div class="oitems">${items(o).map(i=>`<span>• ${esc(i.title)}${i.qty>1?` × ${i.qty}`:''} <span class="muted">${[i.color, i.size&&'р. '+i.size].filter(Boolean).map(esc).join(' · ')} · ${rub(i.price*(i.qty||1))}</span></span>`).join('')}</div>
+      ${o.cost!=null?`<div class="muted">Маржа: <span class="good">${rub(o.price-o.cost)}</span></div>`:''}
       <div>${esc(o.name)} · ${who(o)}</div>
       ${o.city||o.comment?`<div class="muted">${esc(o.city||'')}${o.comment?' · '+esc(o.comment):''}</div>`:''}
+      <div class="orow" style="margin-top:6px"><select data-car="${o.id}" aria-label="Служба доставки">
+          <option value="cdek" ${o.carrier==='cdek'||!o.carrier?'selected':''}>СДЭК</option><option value="post" ${o.carrier==='post'?'selected':''}>Почта России</option><option value="other" ${o.carrier==='other'?'selected':''}>Другое</option></select>
+        <input data-tr="${o.id}" placeholder="Трек-номер" value="${esc(o.track||'')}" aria-label="Трек-номер"><button class="pill" data-trs="${o.id}">Сохранить</button></div>
       <div class="muted">${new Date(o.created_at*1000).toLocaleString('ru-RU')} · источник: ${esc(o.source)}</div></div>`).join('')
     : '<div class="empty"><b>Заказов пока нет</b>Новые заказы появятся здесь и придут вам в Telegram</div>';
   $$('[data-o]').forEach(s => s.onchange = async () => {
-    const r = await api(`/api/admin/order/${s.dataset.o}/status`,{method:'POST',json:{status:s.value}}); s.className='st '+s.value;
-    toast(r.review_asked ? 'Статус обновлён, бот попросил отзыв' : 'Статус обновлён'); });
+    const id = s.dataset.o, track = $(`[data-tr="${id}"]`).value.trim(), carrier = $(`[data-car="${id}"]`).value;
+    if (s.value==='sent' && !track) toast('Совет: впишите трек-номер — покупатель получит его в сообщении');
+    const r = await api(`/api/admin/order/${id}`,{method:'POST',json:{status:s.value, ...(track?{track, carrier}:{})}}); s.className='st '+s.value;
+    toast(r.review_asked ? 'Статус обновлён, бот попросил отзыв' : r.notified ? 'Статус обновлён, покупатель получил сообщение' : 'Статус обновлён'); });
+  $$('[data-trs]').forEach(b => b.onclick = async () => {
+    const id = b.dataset.trs, track = $(`[data-tr="${id}"]`).value.trim(), carrier = $(`[data-car="${id}"]`).value;
+    const r = await api(`/api/admin/order/${id}`,{method:'POST',json:{track, carrier}});
+    toast(r.notified ? 'Трек сохранён и отправлен покупателю' : 'Трек сохранён. Покупатель получит его, когда поставите статус «Отправлен»'); });
 }
 
 const RS = {pending:'На проверке', ok:'Опубликован', hidden:'Скрыт'};
@@ -941,10 +1116,11 @@ async function aStats(days=S.days||7) {
 // ---------------------------------------------------------------- старт
 (async () => {
   skeleton();
-  try { await load(); } catch(e) { $('#app').innerHTML = '<div class="empty"><b>Каталог не загрузился</b>Проверьте интернет и откройте ещё раз</div>'; return; }
+  try { await load(); await cartLoad(); } catch(e) { $('#app').innerHTML = '<div class="empty"><b>Каталог не загрузился</b>Проверьте интернет и откройте ещё раз</div>'; return; }
   track('open');
   const rid = +(qs.get('review') || (START.startsWith('r_') ? START.slice(2) : 0));
   if (rid) return renderReview(rid);
+  if (qs.get('view') === 'orders') return renderOrders();
   const pid = +(qs.get('p') || (START.startsWith('p_') ? START.slice(2) : 0));
   const pr = pid && S.products.find(x=>x.id===pid);
   if (pr) { S.grp = catOf(pr.category_id)?.grp || 'w'; openProduct(pid); } else renderShop();

@@ -93,13 +93,25 @@ async function tg(method: string, body: unknown) {
 const appButton = (text: string, query: string) => ({
   inline_keyboard: [[{ text, web_app: { url: `${WEBAPP_URL}/?${query}` } }]],
 });
-async function send(chatId: number | null, text: string, opts: { product?: number; review?: number } = {}) {
+async function send(chatId: number | null, text: string, opts: { product?: number; review?: number; orders?: boolean } = {}) {
   if (!chatId || !BOT_TOKEN) return 0;
   const markup = opts.product
     ? appButton("Посмотреть", `src=bot_msg&p=${opts.product}`)
-    : opts.review ? appButton("Оставить отзыв", `src=bot_msg&review=${opts.review}`) : undefined;
+    : opts.review ? appButton("Оставить отзыв", `src=bot_msg&review=${opts.review}`)
+    : opts.orders ? appButton("Мои заказы", "src=bot_msg&view=orders") : undefined;
   const r = await tg("sendMessage", { chat_id: chatId, text, parse_mode: "HTML", reply_markup: markup });
   return r.ok ? 1 : 0;
+}
+
+// ---------------------------------------------------------------- доставка
+
+const carrierName = (c: string) => c === "cdek" ? "СДЭК" : c === "post" ? "Почта России" : "Доставка";
+function trackUrl(carrier: string, track: string): string | null {
+  if (!track) return null;
+  const t = encodeURIComponent(track);
+  if (carrier === "cdek") return `https://www.cdek.ru/ru/tracking?order_id=${t}`;
+  if (carrier === "post") return `https://www.pochta.ru/tracking?barcode=${t}`;
+  return null;
 }
 
 // ---------------------------------------------------------------- фото
@@ -198,18 +210,45 @@ async function handle(req: Request): Promise<Response> {
     const phone = String(d.phone || "").trim().slice(0, 40);
     const contact = d.contact === "phone" ? "phone" : "tg";
     if (!name || (contact === "phone" && !phone) || (contact === "tg" && !user?.id)) return err(400, "name and contact required");
-    const p = must(await db.from("products").select("*").eq("id", intOrNull(d.product_id)).maybeSingle()) as Product | null;
-    if (!p) return err(404, "no product");
+    // корзина: [{product_id,size,color,qty}]; старый формат — одна вещь в корне запроса
+    const raw: Array<Record<string, unknown>> = Array.isArray(d.items) && d.items.length ? d.items.slice(0, 20) : [d];
+    const ids = [...new Set(raw.map((x) => intOrNull(x.product_id)).filter((x): x is number => x !== null))];
+    const prods = must(await db.from("products").select("*").in("id", ids.length ? ids : [0])) as Product[];
+    const byId = new Map(prods.map((p) => [p.id, p]));
+    const items = [];
+    for (const x of raw) {
+      const p = byId.get(intOrNull(x.product_id) ?? -1);
+      if (!p) return err(404, "Товар больше не продаётся — обновите корзину");
+      if (!p.in_stock) return err(409, `«${p.title}» закончился — уберите его из корзины`);
+      items.push({ product_id: p.id, title: p.title, price: Number(p.price), cost: p.cost === null ? null : Number(p.cost),
+        size: String(x.size || "").slice(0, 20), color: String(x.color || "").slice(0, 40),
+        qty: Math.max(1, Math.min(10, intOrNull(x.qty) ?? 1)), photo: p.photos[0] ?? null });
+    }
+    const total = items.reduce((a, i) => a + i.price * i.qty, 0);
+    const cost = items.some((i) => i.cost === null) ? null : items.reduce((a, i) => a + (i.cost ?? 0) * i.qty, 0);
+    const pieces = items.reduce((a, i) => a + i.qty, 0);
     const source = String(d.source || "direct").slice(0, 40);
     const o = must(await db.from("orders").insert({
-      product_id: p.id, product_title: p.title, price: p.price, cost: p.cost,
-      size: String(d.size || "").slice(0, 20), color: String(d.color || "").slice(0, 40),
+      product_id: items[0].product_id,
+      product_title: items.length > 1 ? `${items[0].title} + ещё ${pieces - items[0].qty}` : items[0].title,
+      price: total, cost, items, size: items[0].size, color: items[0].color,
       name, phone, contact, city: String(d.city || "").slice(0, 120), comment: String(d.comment || "").slice(0, 500),
-      user_id: user?.id ?? null, username: user?.username ?? null, source,
+      user_id: user?.id ?? null, username: user?.username ?? null, source, updated_at: now(),
     }).select().single()) as Record<string, unknown>;
-    await db.from("events").insert({ type: "order", product_id: p.id, user_id: user?.id ?? null, source });
+    await db.from("events").insert(items.map((i) => ({ type: "order", product_id: i.product_id, user_id: user?.id ?? null, source })));
     await notifyAdmins(o);
     return json({ ok: true, order_id: o.id });
+  }
+
+  // мои заказы
+  if (path === "/api/my-orders" && m === "GET") {
+    if (!user?.id) return json([]);
+    const r = must(await db.from("orders").select("id,items,price,status,carrier,track,city,created_at,updated_at")
+      .eq("user_id", user.id).order("id", { ascending: false }).limit(50)) as Array<Record<string, unknown>>;
+    const rv = must(await db.from("reviews").select("order_id,product_id").eq("user_id", user.id)) as Array<{ order_id: number; product_id: number }>;
+    const done = new Set(rv.map((x) => `${x.order_id}:${x.product_id}`));
+    return json(r.map((o) => ({ ...o, track_url: trackUrl(o.carrier as string, o.track as string),
+      items: (o.items as Array<Record<string, unknown>>).map((i) => ({ ...i, cost: undefined, reviewed: done.has(`${o.id}:${i.product_id}`) })) })));
   }
 
   // избранное
@@ -235,10 +274,12 @@ async function handle(req: Request): Promise<Response> {
   }
   if ((mm = path.match(/^\/api\/review\/order\/(\d+)$/)) && m === "GET") {
     const u = requireUser(user);
-    const o = must(await db.from("orders").select("id,product_id,product_title,size,color,status,user_id").eq("id", Number(mm[1])).maybeSingle()) as Record<string, unknown> | null;
+    const o = must(await db.from("orders").select("id,items,status,user_id").eq("id", Number(mm[1])).maybeSingle()) as Record<string, unknown> | null;
     if (!o || o.user_id !== u.id) return err(404, "not found");
-    const done = must(await db.from("reviews").select("id").eq("order_id", o.id).maybeSingle());
-    return json({ ...o, reviewed: !!done });
+    const rv = must(await db.from("reviews").select("product_id").eq("order_id", o.id)) as Array<{ product_id: number }>;
+    const done = new Set(rv.map((x) => x.product_id));
+    const items = (o.items as Array<Record<string, unknown>>).map((i) => ({ ...i, cost: undefined, reviewed: done.has(Number(i.product_id)) }));
+    return json({ id: o.id, status: o.status, items, reviewed: items.every((i) => i.reviewed) });
   }
   if (path === "/api/review" && m === "POST") {
     const u = requireUser(user);
@@ -248,14 +289,18 @@ async function handle(req: Request): Promise<Response> {
     if (rating < 1 || rating > 5) return err(400, "rating 1-5");
     const o = must(await db.from("orders").select("*").eq("id", oid).maybeSingle()) as Record<string, unknown> | null;
     if (!o || o.user_id !== u.id || !["sent", "done"].includes(String(o.status))) return err(403, "review only after delivery");
-    if (must(await db.from("reviews").select("id").eq("order_id", oid).maybeSingle())) return err(409, "already reviewed");
+    const items = o.items as Array<Record<string, unknown>>;
+    const pid = intOrNull(formStr(f, "product_id")) ?? Number(items[0]?.product_id);
+    const item = items.find((i) => Number(i.product_id) === pid);
+    if (!item) return err(400, "not in order");
+    if (must(await db.from("reviews").select("id").eq("order_id", oid).eq("product_id", pid).maybeSingle())) return err(409, "already reviewed");
     const fit = formStr(f, "fit");
     const photos = await savePhotos(formFiles(f, "photos").slice(0, 5));
     must(await db.from("reviews").insert({
-      product_id: o.product_id, order_id: oid, user_id: u.id, name: String(o.name || u.first_name || "Покупатель").slice(0, 40),
+      product_id: pid, order_id: oid, user_id: u.id, name: String(o.name || u.first_name || "Покупатель").slice(0, 40),
       rating, fit: ["small", "ok", "big"].includes(fit) ? fit : null, text: formStr(f, "text").slice(0, 1000), photos,
     }));
-    for (const aid of ADMIN_IDS) await send(aid, `⭐️ Новый отзыв (${rating}/5) на «${escHtml(String(o.product_title))}» — проверьте во вкладке «Отзывы» в админке.`);
+    for (const aid of ADMIN_IDS) await send(aid, `⭐️ Новый отзыв (${rating}/5) на «${escHtml(String(item.title))}» — проверьте во вкладке «Отзывы» в админке.`);
     return json({ ok: true });
   }
 
@@ -383,19 +428,36 @@ async function handle(req: Request): Promise<Response> {
   if (path === "/api/admin/orders" && m === "GET") {
     return json(must(await db.from("orders").select("*").order("id", { ascending: false }).limit(200)));
   }
-  if ((mm = path.match(/^\/api\/admin\/order\/(\d+)\/status$/)) && m === "POST") {
+  if ((mm = path.match(/^\/api\/admin\/order\/(\d+)(?:\/status)?$/)) && m === "POST") {
     const d = await req.json();
-    if (!["new", "paid", "sent", "done", "cancel"].includes(d.status)) return err(400, "bad status");
     const oid = Number(mm[1]);
     const o = must(await db.from("orders").select("*").eq("id", oid).maybeSingle()) as Record<string, unknown> | null;
-    must(await db.from("orders").update({ status: d.status }).eq("id", oid));
-    let asked = false;
-    if (d.status === "done" && o && o.status !== "done" && o.user_id) {
-      asked = !!(await send(Number(o.user_id),
-        `Как вам «${escHtml(String(o.product_title))}»? 🤍\n\nОставьте короткий отзыв и, если не сложно, фото — это очень помогает другим с выбором размера.`,
-        { review: oid }));
+    if (!o) return err(404, "no order");
+    const upd: Record<string, unknown> = { updated_at: now() };
+    if (d.status !== undefined) {
+      if (!["new", "paid", "sent", "done", "cancel"].includes(d.status)) return err(400, "bad status");
+      upd.status = d.status;
     }
-    return json({ ok: true, review_asked: asked });
+    if (d.carrier !== undefined) upd.carrier = ["cdek", "post", "other"].includes(d.carrier) ? d.carrier : null;
+    if (d.track !== undefined) upd.track = String(d.track || "").replace(/\s/g, "").slice(0, 40) || null;
+    must(await db.from("orders").update(upd).eq("id", oid));
+    const n = { ...o, ...upd };
+    let told = false;
+    const uid = Number(o.user_id) || 0;
+    const statusChanged = d.status !== undefined && d.status !== o.status;
+    const trackChanged = d.track !== undefined && n.track && n.track !== o.track;
+    if (uid && (statusChanged || (trackChanged && n.status === "sent"))) {
+      const t = `заказ №${oid}`;
+      const tr = n.track ? `\n\n${carrierName(n.carrier as string)}, трек-номер: <code>${escHtml(String(n.track))}</code>` +
+        (trackUrl(n.carrier as string, n.track as string) ? `\nОтследить: ${trackUrl(n.carrier as string, n.track as string)}` : "") : "";
+      const msg = n.status === "paid" ? `✅ Оплата получена, ${t} передан в работу. Сообщим, как только отправим.`
+        : n.status === "sent" ? `📦 Ваш ${t} отправлен!${tr}`
+        : n.status === "cancel" ? `Ваш ${t} отменён. Если это ошибка — напишите нам.`
+        : n.status === "done" ? `Как вам покупка? 🤍\n\nОставьте короткий отзыв и, если не сложно, фото — это очень помогает другим с выбором размера.`
+        : "";
+      if (msg) told = !!(await send(uid, msg, n.status === "done" ? { review: oid } : { orders: true }));
+    }
+    return json({ ok: true, notified: told, review_asked: told && n.status === "done" });
   }
   if (path === "/api/admin/reviews" && m === "GET") {
     const r = must(await db.from("reviews").select("*, products(title)").order("id", { ascending: false }).limit(200)) as Array<Record<string, unknown>>;
@@ -428,8 +490,11 @@ async function handle(req: Request): Promise<Response> {
 async function notifyAdmins(o: Record<string, unknown>) {
   const who = o.contact === "phone" ? `по телефону ${escHtml(String(o.phone))}`
     : o.username ? `в Telegram: @${o.username}` : `в Telegram: <a href="tg://user?id=${o.user_id}">написать</a>`;
-  const text = `🛍 <b>Новый заказ #${o.id}</b>\n\n<b>${escHtml(String(o.product_title))}</b> — ${rub(Number(o.price))}\n` +
-    `Размер: ${escHtml(String(o.size || "—"))}   Цвет: ${escHtml(String(o.color || "—"))}\n\n` +
+  const items = (o.items as Array<Record<string, unknown>>).map((i, k) =>
+    `${k + 1}. <b>${escHtml(String(i.title))}</b>${Number(i.qty) > 1 ? ` × ${i.qty}` : ""} — ${rub(Number(i.price) * Number(i.qty))}\n` +
+    `    размер: ${escHtml(String(i.size || "—"))}, цвет: ${escHtml(String(i.color || "—"))}`).join("\n");
+  const margin = o.cost !== null && o.cost !== undefined ? `\nМаржа: ${rub(Number(o.price) - Number(o.cost))}` : "";
+  const text = `🛍 <b>Новый заказ #${o.id}</b>\n\n${items}\n\n<b>Итого: ${rub(Number(o.price))}</b>${margin}\n\n` +
     `Имя: ${escHtml(String(o.name))}\nСвязь: ${who}\nГород: ${escHtml(String(o.city || "—"))}\n` +
     `Комментарий: ${escHtml(String(o.comment || "—"))}\n\nИсточник: ${escHtml(String(o.source))}`;
   for (const aid of ADMIN_IDS) await send(aid, text);
