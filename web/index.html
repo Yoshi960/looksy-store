@@ -167,10 +167,15 @@ img{max-width:100%}
 
 /* товар */
 .gal{position:relative;margin:-10px -16px 0}
-.gal .track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
-.gal .track::-webkit-scrollbar{display:none}
-.gal img{flex:none;width:100%;aspect-ratio:3/4;object-fit:cover;scroll-snap-align:center;background:var(--surface2);display:block}
-.gal .count{position:absolute;right:max(16px,env(safe-area-inset-right,0px));bottom:36px;background:var(--scrim);color:#fff;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.gal{overflow:hidden}
+.gal .track{display:flex;touch-action:pan-y;transition:transform .32s cubic-bezier(.2,.8,.2,1);will-change:transform}
+.gal .track.drag{transition:none}
+.gal img{flex:none;width:100%;aspect-ratio:3/4;object-fit:cover;background:var(--surface2);display:block;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.gal .dots{position:absolute;left:0;right:0;bottom:36px;display:flex;justify-content:center;gap:6px;pointer-events:none}
+.gal .dots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.5);transition:width .2s}
+.gal .dots i.on{width:18px;border-radius:3px;background:#fff}
+@media (prefers-reduced-motion:reduce){.gal .track{transition:none}}
+.gal .count{position:absolute;right:max(16px,env(safe-area-inset-right,0px));top:calc(64px + env(safe-area-inset-top,0px));background:var(--scrim);color:#fff;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
 .gal .tl{position:absolute;left:max(16px,env(safe-area-inset-left,0px));top:calc(12px + env(safe-area-inset-top,0px))}
 .gal .tr{position:absolute;right:max(16px,env(safe-area-inset-right,0px));top:calc(12px + env(safe-area-inset-top,0px))}
 .gal .iconbtn{background:var(--glass);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
@@ -525,7 +530,7 @@ function openProduct(id, sel={}) {
   const similar = S.products.filter(x => x.id!==p.id && x.in_stock && (x.category_id===p.category_id || (catOf(x.category_id)?.grp===catOf(p.category_id)?.grp))).sort((a,b)=>(b.category_id===p.category_id)-(a.category_id===p.category_id)).slice(0,6);
   $('#app').innerHTML = `
     <div class="gal"><div class="track" id="trk">${ph.map(f=>`<img src="${img(f)}" alt="">`).join('')}</div>
-      ${ph.length>1?`<div class="count" id="cnt">1 / ${ph.length}</div>`:''}
+      ${ph.length>1?`<div class="count" id="cnt">1 / ${ph.length}</div><div class="dots" id="dots">${ph.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>`:''}
       ${tg?'':`<button class="iconbtn tl" id="bk" aria-label="Назад">${I.back}</button>`}
       <div class="tr" style="display:flex;gap:8px"><button class="iconbtn" id="shr" aria-label="Поделиться">${I.share}</button>${heartBtn(p.id,'iconbtn')}</div></div>
     <div class="info">
@@ -548,7 +553,7 @@ function openProduct(id, sel={}) {
   $('#bk') && ($('#bk').onclick = renderShop);
   $('#shr').onclick = () => share(p);
   $('#szh') && ($('#szh').onclick = sizeSheet);
-  const trk=$('#trk'); if ($('#cnt')) trk.onscroll = () => { $('#cnt').textContent = `${Math.round(trk.scrollLeft/trk.clientWidth)+1} / ${ph.length}`; };
+  gallery($('#trk'), ph.length);
   $$('.opt[data-k]').forEach(b => b.onclick = () => { sel[b.dataset.k] = b.dataset.v; haptic(); const y=scrollY; openProduct(id, sel); scrollTo(0,y); });
   bindCards($('#app'));
   if (p.rating) loadReviews(p);
@@ -558,6 +563,42 @@ function openProduct(id, sel={}) {
     sel.color ??= p.colors[0]; sel.size ??= p.sizes[0];
     track('order_click', id); openForm(p, sel);
   };
+}
+
+// Листание галереи строго по одному фото: короткий свайп — следующее, сильный — тоже только одно.
+function gallery(trk, n) {
+  if (!trk || n < 2) return;
+  let idx = 0, x0 = 0, y0 = 0, dx = 0, t0 = 0, dir = null;
+  const go = i => {
+    idx = Math.max(0, Math.min(n - 1, i));
+    trk.style.transform = `translateX(${-idx * 100}%)`;
+    $('#cnt') && ($('#cnt').textContent = `${idx + 1} / ${n}`);
+    $$('#dots i').forEach((d, k) => d.classList.toggle('on', k === idx));
+  };
+  trk.addEventListener('touchstart', e => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; dx = 0; dir = null; t0 = Date.now(); }, {passive:true});
+  trk.addEventListener('touchmove', e => {
+    const t = e.touches[0], mx = t.clientX - x0, my = t.clientY - y0;
+    if (!dir) dir = Math.abs(mx) > Math.abs(my) + 4 ? 'x' : (Math.abs(my) > 8 ? 'y' : null);
+    if (dir !== 'x') return;
+    dx = mx;
+    const edge = (idx === 0 && dx > 0) || (idx === n - 1 && dx < 0) ? 0.3 : 1;  // упругий край
+    trk.classList.add('drag');
+    trk.style.transform = `translateX(calc(${-idx * 100}% + ${dx * edge}px))`;
+  }, {passive:true});
+  trk.addEventListener('touchend', () => {
+    trk.classList.remove('drag');
+    if (dir === 'x') {
+      const fast = Math.abs(dx) > 25 && Date.now() - t0 < 250;
+      if (Math.abs(dx) > trk.clientWidth * 0.18 || fast) { go(idx + (dx < 0 ? 1 : -1)); haptic(); } else go(idx);
+    }
+    dir = null; dx = 0;
+  });
+  // на компьютере — клик по левой/правой половине
+  trk.parentElement.addEventListener('click', e => {
+    if (e.target.closest('button')) return;
+    const r = trk.getBoundingClientRect();
+    go(idx + (e.clientX - r.left > r.width / 2 ? 1 : -1));
+  });
 }
 
 function fitTop(p) {
