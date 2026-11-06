@@ -330,12 +330,9 @@ async function handle(req: Request): Promise<Response> {
     let b64 = "";
     for (let i = 0; i < bytes.length; i += 0x8000) b64 += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
     b64 = btoa(b64);
-    const prompt =
-      `Product photo for an online clothing store. Take the garment from the reference image and dress ${scene} in it. ` +
-      `Keep the garment exactly identical to the reference: same color and shade, material and texture, fur, collar, closures, buttons, zippers, pockets, belt, length, cut and proportions. ` +
-      `Do not add or remove any details of the garment. Simple neutral outfit underneath (plain top, straight jeans or trousers, simple shoes). ` +
-      `Realistic photo like a good smartphone shot, natural light, vertical 3:4 frame, the garment fully visible. No text, no logos, no watermarks, no brand names.` +
-      (d.extra ? ` Additional wishes: ${String(d.extra).slice(0, 300)}` : "");
+    // Промт собирает админка (сцены бренда); на случай старой версии — запасной вариант
+    const prompt = String(d.prompt || "").slice(0, 2500) ||
+      `Create a lifestyle fashion photo. Dress ${scene} in the garment from the reference image, keeping the garment exactly identical. Photorealistic, vertical 3:4, no text or logos.`;
     let out: { data: string; mime: string } | null = null;
     let lastErr = "";
     for (const model of GEMINI_MODELS) {

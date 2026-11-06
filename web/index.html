@@ -225,9 +225,13 @@ h1.page{font:800 22px var(--display);margin:8px 0 16px}
 .mtag{display:inline-block;border-radius:6px;padding:1px 6px;font-size:11px;font-weight:800;background:var(--accent-soft);color:var(--accent);margin-left:4px}
 .good{color:var(--st-paid)}
 .thumbs{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
-.thumb{position:relative;width:72px;height:96px}
-.thumb img{width:100%;height:100%;object-fit:cover;border-radius:10px}
-.thumb button{position:absolute;right:-6px;top:-6px;width:24px;height:24px;border-radius:50%;border:0;background:var(--sale);color:#fff;line-height:1}
+.thumb{position:relative;width:84px;display:flex;flex-direction:column;gap:4px}
+.thumb img{width:84px;height:112px;object-fit:cover;border-radius:10px;display:block}
+.thumb .main{position:absolute;left:4px;top:4px;background:var(--accent);color:var(--accent-ink);font-size:10px;font-weight:800;border-radius:6px;padding:2px 6px}
+.thumb .mv{display:flex;gap:4px}
+.thumb .mv button{position:static;flex:1;width:auto;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:13px;font-weight:700;padding:0}
+.thumb .mv button:disabled{opacity:.3}
+.thumb>button{position:absolute;right:-6px;top:-6px;width:24px;height:24px;border-radius:50%;border:0;background:var(--sale);color:#fff;line-height:1}
 .file{display:flex;align-items:center;justify-content:center;gap:8px;border:1px dashed var(--hint);border-radius:14px;padding:14px;color:var(--hint);font-weight:600;cursor:pointer}
 .file input{display:none}
 .check{display:flex;align-items:center;gap:10px;font-weight:600;margin:6px 0 16px}
@@ -699,8 +703,10 @@ function productForm(p) {
       <button class="linkback" id="bk">${I.back}К списку</button>
       <h1 class="page">${isNew?'Новый товар':'Редактирование'}</h1>
       <div class="field"><label>Фото — первое станет обложкой</label>
-        <div class="thumbs">${keep.map((f,i)=>`<div class="thumb"><img src="${img(f)}" alt=""><button data-k="${i}" aria-label="Удалить фото">×</button></div>`).join('')}
-        ${files.map((f,i)=>`<div class="thumb"><img src="${URL.createObjectURL(f)}" alt=""><button data-n="${i}" aria-label="Удалить фото">×</button></div>`).join('')}</div>
+        <div class="thumbs">${keep.map((f,i)=>`<div class="thumb"><img src="${img(f)}" alt="">${i===0?'<span class="main">Обложка</span>':''}<button data-k="${i}" aria-label="Удалить фото">×</button>
+          <div class="mv"><button type="button" data-mv="${i}" data-d="-1" ${i===0?'disabled':''} aria-label="Сдвинуть влево">←</button>${i?`<button type="button" data-top="${i}" aria-label="Сделать обложкой">★</button>`:''}<button type="button" data-mv="${i}" data-d="1" ${i===keep.length-1?'disabled':''} aria-label="Сдвинуть вправо">→</button></div></div>`).join('')}
+        ${files.map((f,i)=>`<div class="thumb"><img src="${URL.createObjectURL(f)}" alt="">${!keep.length&&i===0?'<span class="main">Обложка</span>':''}<button data-n="${i}" aria-label="Удалить фото">×</button></div>`).join('')}</div>
+        ${keep.length>1?'<div class="muted" style="margin-bottom:8px">★ — сделать обложкой, стрелки — поменять порядок. Сохраняется кнопкой «Сохранить».</div>':''}
         <label class="file">${I.photo}Добавить фото<input type="file" id="p_files" accept="image/*" multiple></label></div>
       ${isNew ? '' : aiBlock()}
       <div class="field"><label for="p_title">Название</label><input id="p_title" value="${esc(p.title)}"></div>
@@ -723,27 +729,42 @@ function productForm(p) {
     ['#p_price','#p_cost'].forEach(s => $(s).onchange = () => { stash(); draw(); });
     $$('[data-pr]').forEach(b => b.onclick = () => { stash(); p.promo = b.dataset.pr; draw(); });
     $$('[data-k]').forEach(b => b.onclick = () => { stash(); keep.splice(+b.dataset.k,1); draw(); });
+    $$('[data-mv]').forEach(b => b.onclick = () => { stash(); const i=+b.dataset.mv, j=i+(+b.dataset.d); [keep[i],keep[j]]=[keep[j],keep[i]]; haptic(); draw(); });
+    $$('[data-top]').forEach(b => b.onclick = () => { stash(); const i=+b.dataset.top; keep.unshift(keep.splice(i,1)[0]); haptic(); toast('Сделали обложкой — не забудьте сохранить'); draw(); });
     $$('[data-n]').forEach(b => b.onclick = () => { stash(); files.splice(+b.dataset.n,1); draw(); });
     $('#save').onclick = save;
     $('#del') && ($('#del').onclick = del);
   };
   // ---------- нейро-фото на модели бренда
-  const AIP = [['lisa','Лиса · улица'],['lisa_noface','Без лица · студия'],['mila','Мила · примерочная'],['max','Макс · мужское']];
-  const ai = {preset:'lisa', src: keep[0] || null, busy:false};
+  // Сцены бренда: живые кадры «хочу так же», а не каталожная съёмка. Модель одна и та же — «наша».
+  const MODEL_W = 'our brand model — the same girl in every photo: slim young woman, 23, long straight dark-brown hair, soft natural makeup, warm confident smile';
+  const MODEL_M = 'our brand model — a young man, 25, short dark hair, light stubble, relaxed confident look';
+  const AIP = [
+    ['evening','Вечерний город', `${MODEL_W}. Snowy city street at blue hour, warm shop-window lights and garland bokeh behind her, light snowfall. She walks toward the camera mid-step, laughing, a strand of hair caught by the wind. Shot on 85mm, shallow depth of field, cinematic warm-cool color grading.`],
+    ['coffee','Кофе на ходу', `${MODEL_W}. Frosty sunny morning in an old city center, she holds a takeaway coffee cup with visible steam, glancing back over her shoulder with a playful smile, candid street-style moment. Low warm sun, glowing rim light on the fur, 50mm, shallow depth of field.`],
+    ['newyear','Новогодние огни', `${MODEL_W}. Festive winter evening at a Christmas market: string lights, decorated fir branches, golden bokeh. She looks up at falling snowflakes with a joyful smile, hands in pockets. Cozy, magical, warm tones, 85mm.`],
+    ['park','Зимний парк, солнце', `${MODEL_W}. Snowy park at golden hour, low sun behind her making the fur glow, sparkling snow in the air. She is twirling slightly, coat moving, happy and carefree. Dreamy backlight, 85mm, soft haze.`],
+    ['close','Крупно: мех и детали', `${MODEL_W}, framed from the lips down to the waist — the face mostly out of frame. Her hand with a delicate ring gently touches the collar, showing how soft and thick the material is. Soft window light, rich texture in sharp focus, creamy background, macro-like detail, luxurious tactile mood.`],
+    ['mirror','Селфи в зеркале', `${MODEL_W}. Mirror selfie in a stylish bright apartment hallway, phone covering most of her face, slight hip-pop pose, natural daylight from a window, cozy home details. Authentic Instagram look that feels like a real customer photo.`],
+    ['studio','Студия · обложка', `${MODEL_W}. Fashion magazine cover shot in a minimal studio with a warm beige backdrop, confident power pose, one hand on the collar, dramatic soft key light with gentle shadow. Clean, premium, editorial.`],
+    ['man','Мужское · город', `${MODEL_M}. Evening city street with wet asphalt reflecting neon and warm lights, light snow. He walks with hands in pockets, looking slightly off-camera, effortless cool. 50mm, cinematic grading.`],
+  ];
+  const ai = {preset:'evening', src: keep[0] || null, busy:false, extra:''};
+  const aiScene = () => (AIP.find(x=>x[0]===ai.preset) || AIP[0])[2];
   function aiPrompt() {
-    const scene = {lisa:'стройную девушку 23 лет с длинными тёмными волосами на заснеженной городской улице, в полный рост',
-      lisa_noface:'стройную девушку, кадр от подбородка до колен, лица не видно, светло-серая стена, дневной свет',
-      mila:'девушку 25 лет со светлым каре в светлой примерочной с большим зеркалом, в полный рост',
-      max:'парня 25 лет с короткими тёмными волосами и лёгкой щетиной на зимней городской улице, в полный рост'}[ai.preset];
-    return `Надень эту вещь с фото на ${scene}. Вещь должна остаться точно такой же: цвет, материал, мех, воротник, застёжки, карманы, пояс, длина и крой. Ничего не добавляй и не убирай. Под низ — простой однотонный верх, прямые джинсы или брюки. Реалистичное фото как со смартфона, естественный свет, вертикальный кадр 3:4. Без текста, логотипов и водяных знаков.`;
+    return `Create a scroll-stopping lifestyle photo for a clothing brand that makes people want to buy this item right now. ${aiScene()} ` +
+      `The model wears the garment from the reference image — it is the hero of the frame. Keep the garment exactly identical: same color and shade, material, fur texture, collar, closures, pockets, belt, length, cut and proportions; do not add or remove details. ` +
+      `Simple stylish outfit underneath that does not distract. Photorealistic, natural skin, realistic hands, vertical 3:4. No text, no logos, no watermarks, no brand names.` +
+      (ai.extra ? ` Extra: ${ai.extra}` : '');
   }
   function aiBlock() {
     if (!keep.length) return '';
     return `<div class="ai"><h4>Нейро-фото на модели</h4>
       <div class="muted">Фото-основа</div>
       <div class="src">${keep.map(f=>`<button type="button" class="${ai.src===f?'on':''}" data-ais="${esc(f)}" aria-label="Взять это фото за основу"><img src="${img(f)}" alt=""></button>`).join('')}</div>
-      <div class="muted">Модель</div>
+      <div class="muted">Сцена</div>
       <div class="opts">${AIP.map(([k,t])=>`<button type="button" class="opt ${ai.preset===k?'on':''}" data-aip="${k}">${t}</button>`).join('')}</div>
+      <div class="field" style="margin:0"><label for="ai_extra">Свои пожелания <i>необязательно</i></label><input id="ai_extra" placeholder="Например: в руках бумажный пакет, рыжий кот рядом" value="${esc(ai.extra)}"></div>
       ${S.ai ? `<button type="button" class="btn" id="ai_go" ${ai.busy?'disabled':''}>${ai.busy?'Генерируем… ~20 секунд':'Сгенерировать фото'}</button>
         <span class="muted">Фото добавится в конец галереи. Сравните с оригиналом: цвет, мех, застёжки — если что-то не так, удалите и сгенерируйте ещё раз.</span>`
       : `<span class="muted">Ключ нейросети не подключён — можно сделать вручную: скопируйте промт, вставьте его вместе с фото-основой в Gemini и загрузите результат через «Добавить фото».</span>
@@ -752,12 +773,13 @@ function productForm(p) {
   }
   function bindAi() {
     $$('[data-ais]').forEach(b => b.onclick = () => { stash(); ai.src = b.dataset.ais; draw(); });
-    $$('[data-aip]').forEach(b => b.onclick = () => { stash(); ai.preset = b.dataset.aip; draw(); });
+    $$('[data-aip]').forEach(b => b.onclick = () => { stash(); ai.extra = $('#ai_extra')?.value || ''; ai.preset = b.dataset.aip; draw(); });
+    $('#ai_extra') && ($('#ai_extra').oninput = e => { ai.extra = e.target.value; const pr = $('#ai_prompt'); if (pr) pr.textContent = aiPrompt(); });
     $('#ai_copy') && ($('#ai_copy').onclick = () => navigator.clipboard?.writeText(aiPrompt()).then(()=>toast('Промт скопирован'), ()=>toast('Выделите текст промта и скопируйте')));
     $('#ai_go') && ($('#ai_go').onclick = async () => {
-      stash(); ai.busy = true; draw();
+      stash(); ai.extra = $('#ai_extra')?.value || ''; ai.busy = true; draw();
       try {
-        const r = await api('/api/admin/ai-photo', {method:'POST', json:{product_id:p.id, photo:ai.src, preset:ai.preset}});
+        const r = await api('/api/admin/ai-photo', {method:'POST', json:{product_id:p.id, photo:ai.src, prompt:aiPrompt()}});
         keep.push(r.name); p.photos = r.photos; toast('Готово — новое фото в конце галереи');
         const sp = S.products.find(x=>x.id===p.id); if (sp) sp.photos = r.photos;
       } catch(e) { toast(String(e.message||'Не получилось').slice(0,160)); }
