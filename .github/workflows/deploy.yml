@@ -39,6 +39,9 @@ jobs:
             SETUP_KEY="${{ secrets.SETUP_KEY }}" \
             WEBHOOK_SECRET="${{ secrets.SETUP_KEY }}" \
             WEBAPP_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+          if [ -n "${{ secrets.GEMINI_API_KEY }}" ]; then
+            supabase secrets set --project-ref "$REF" --yes GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
+          fi
       - name: Опубликовать функцию
         run: supabase functions deploy api --project-ref "$REF" --no-verify-jwt --yes
       - name: Подключить бота (вебхук и кнопка «Каталог»)

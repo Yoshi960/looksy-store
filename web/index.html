@@ -232,6 +232,14 @@ h1.page{font:800 22px var(--display);margin:8px 0 16px}
 .file input{display:none}
 .check{display:flex;align-items:center;gap:10px;font-weight:600;margin:6px 0 16px}
 .check input{width:20px;height:20px;accent-color:var(--accent)}
+.ai{background:var(--accent-soft);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.ai h4{margin:0;font:800 15px var(--display)}
+.ai .opts .opt{padding:8px 12px;font-size:13px}
+.ai .src{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.ai .src button{flex:none;border:2px solid transparent;border-radius:10px;padding:0;background:none;width:54px;height:72px;overflow:hidden}
+.ai .src button.on{border-color:var(--accent)}
+.ai .src img{width:100%;height:100%;object-fit:cover;display:block}
+.ai pre{white-space:pre-wrap;font:12px/1.45 var(--body);background:var(--surface);border-radius:12px;padding:10px;margin:0;color:var(--text2);max-height:160px;overflow:auto}
 .promo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .promo button{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:12px;text-align:left;color:var(--text);display:flex;flex-direction:column;gap:3px}
 .promo button b{font-size:14px}
@@ -327,7 +335,7 @@ function setBack(fn){ try{ tg?.BackButton?.offClick?.(window.__bk); if(fn){ wind
 
 async function load() {
   const [me, cat] = await Promise.all([api('/api/me'), api('/api/catalog')]);
-  S.shop = me.shop; S.bot = me.bot || ''; S.admin = me.is_admin;
+  S.shop = me.shop; S.bot = me.bot || ''; S.admin = me.is_admin; S.ai = !!me.ai;
   S.cats = cat.categories.map(c=>({...c, grp:c.grp||'w'})); S.products = cat.products;
   try { S.favs = new Set(await api('/api/favs')); } catch(e) {}
 }
@@ -694,6 +702,7 @@ function productForm(p) {
         <div class="thumbs">${keep.map((f,i)=>`<div class="thumb"><img src="${img(f)}" alt=""><button data-k="${i}" aria-label="Удалить фото">×</button></div>`).join('')}
         ${files.map((f,i)=>`<div class="thumb"><img src="${URL.createObjectURL(f)}" alt=""><button data-n="${i}" aria-label="Удалить фото">×</button></div>`).join('')}</div>
         <label class="file">${I.photo}Добавить фото<input type="file" id="p_files" accept="image/*" multiple></label></div>
+      ${isNew ? '' : aiBlock()}
       <div class="field"><label for="p_title">Название</label><input id="p_title" value="${esc(p.title)}"></div>
       <div class="field"><label for="p_cat">Категория</label><select id="p_cat"><option value="">— без категории —</option>
         ${GROUPS.map(([g,t])=>`<optgroup label="${t}">${S.cats.filter(c=>c.grp===g).map(c=>`<option value="${c.id}" ${p.category_id===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</optgroup>`).join('')}</select></div>
@@ -709,6 +718,7 @@ function productForm(p) {
       <button class="btn" id="save">Сохранить</button>
       ${isNew?'':'<div style="height:10px"></div><button class="btn danger" id="del">Удалить товар</button>'}`;
     $('#bk').onclick = aProducts;
+    bindAi();
     $('#p_files').onchange = e => { stash(); files.push(...e.target.files); draw(); };
     ['#p_price','#p_cost'].forEach(s => $(s).onchange = () => { stash(); draw(); });
     $$('[data-pr]').forEach(b => b.onclick = () => { stash(); p.promo = b.dataset.pr; draw(); });
@@ -717,6 +727,44 @@ function productForm(p) {
     $('#save').onclick = save;
     $('#del') && ($('#del').onclick = del);
   };
+  // ---------- нейро-фото на модели бренда
+  const AIP = [['lisa','Лиса · улица'],['lisa_noface','Без лица · студия'],['mila','Мила · примерочная'],['max','Макс · мужское']];
+  const ai = {preset:'lisa', src: keep[0] || null, busy:false};
+  function aiPrompt() {
+    const scene = {lisa:'стройную девушку 23 лет с длинными тёмными волосами на заснеженной городской улице, в полный рост',
+      lisa_noface:'стройную девушку, кадр от подбородка до колен, лица не видно, светло-серая стена, дневной свет',
+      mila:'девушку 25 лет со светлым каре в светлой примерочной с большим зеркалом, в полный рост',
+      max:'парня 25 лет с короткими тёмными волосами и лёгкой щетиной на зимней городской улице, в полный рост'}[ai.preset];
+    return `Надень эту вещь с фото на ${scene}. Вещь должна остаться точно такой же: цвет, материал, мех, воротник, застёжки, карманы, пояс, длина и крой. Ничего не добавляй и не убирай. Под низ — простой однотонный верх, прямые джинсы или брюки. Реалистичное фото как со смартфона, естественный свет, вертикальный кадр 3:4. Без текста, логотипов и водяных знаков.`;
+  }
+  function aiBlock() {
+    if (!keep.length) return '';
+    return `<div class="ai"><h4>Нейро-фото на модели</h4>
+      <div class="muted">Фото-основа</div>
+      <div class="src">${keep.map(f=>`<button type="button" class="${ai.src===f?'on':''}" data-ais="${esc(f)}" aria-label="Взять это фото за основу"><img src="${img(f)}" alt=""></button>`).join('')}</div>
+      <div class="muted">Модель</div>
+      <div class="opts">${AIP.map(([k,t])=>`<button type="button" class="opt ${ai.preset===k?'on':''}" data-aip="${k}">${t}</button>`).join('')}</div>
+      ${S.ai ? `<button type="button" class="btn" id="ai_go" ${ai.busy?'disabled':''}>${ai.busy?'Генерируем… ~20 секунд':'Сгенерировать фото'}</button>
+        <span class="muted">Фото добавится в конец галереи. Сравните с оригиналом: цвет, мех, застёжки — если что-то не так, удалите и сгенерируйте ещё раз.</span>`
+      : `<span class="muted">Ключ нейросети не подключён — можно сделать вручную: скопируйте промт, вставьте его вместе с фото-основой в Gemini и загрузите результат через «Добавить фото».</span>
+        <pre id="ai_prompt">${esc(aiPrompt())}</pre><button type="button" class="btn ghost" id="ai_copy">Скопировать промт</button>`}
+    </div>`;
+  }
+  function bindAi() {
+    $$('[data-ais]').forEach(b => b.onclick = () => { stash(); ai.src = b.dataset.ais; draw(); });
+    $$('[data-aip]').forEach(b => b.onclick = () => { stash(); ai.preset = b.dataset.aip; draw(); });
+    $('#ai_copy') && ($('#ai_copy').onclick = () => navigator.clipboard?.writeText(aiPrompt()).then(()=>toast('Промт скопирован'), ()=>toast('Выделите текст промта и скопируйте')));
+    $('#ai_go') && ($('#ai_go').onclick = async () => {
+      stash(); ai.busy = true; draw();
+      try {
+        const r = await api('/api/admin/ai-photo', {method:'POST', json:{product_id:p.id, photo:ai.src, preset:ai.preset}});
+        keep.push(r.name); p.photos = r.photos; toast('Готово — новое фото в конце галереи');
+        const sp = S.products.find(x=>x.id===p.id); if (sp) sp.photos = r.photos;
+      } catch(e) { toast(String(e.message||'Не получилось').slice(0,160)); }
+      ai.busy = false; draw();
+    });
+  }
+
   async function save() {
     stash();
     if (!p.title.trim()) return toast('Введите название');

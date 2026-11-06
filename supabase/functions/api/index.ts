@@ -12,6 +12,16 @@ const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SE
   auth: { persistSession: false },
 });
 let BOT_USERNAME = Deno.env.get("BOT_USERNAME") ?? "";
+const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
+const GEMINI_MODELS = [Deno.env.get("GEMINI_IMAGE_MODEL"), "gemini-nano-banana-2.1", "gemini-2.5-flash-image"].filter(Boolean) as string[];
+
+// Модели бренда для нейро-фото. Одни и те же описания — чтобы на всех фото была «наша» модель.
+const AI_PRESETS: Record<string, string> = {
+  lisa: "a slim young woman about 23 years old with long straight dark-brown hair and natural makeup, standing on a snowy city street in soft daylight, full body, relaxed natural pose",
+  lisa_noface: "a slim young woman, framed from chin to knees so the face is not visible, plain light-grey studio wall, soft daylight, front view",
+  mila: "a young woman about 25 years old with a blonde bob haircut and natural makeup, in a bright minimalist fitting room with a large mirror, full body, natural pose",
+  max: "a young man about 25 years old with short dark hair and light stubble, standing on a winter city street, full body, relaxed natural pose",
+};
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -158,7 +168,7 @@ async function handle(req: Request): Promise<Response> {
     if (!BOT_USERNAME && BOT_TOKEN) {
       try { BOT_USERNAME = (await tg("getMe", {})).result?.username ?? ""; } catch { /* имя бота не критично */ }
     }
-    return json({ shop: SHOP_NAME, is_admin: admin, bot: BOT_USERNAME });
+    return json({ shop: SHOP_NAME, is_admin: admin, bot: BOT_USERNAME, ai: admin && !!GEMINI_KEY });
   }
 
   if (path === "/api/catalog" && m === "GET") {
@@ -303,6 +313,60 @@ async function handle(req: Request): Promise<Response> {
       return json({ ok: true, notified });
     }
   }
+  // нейро-фото: надеть вещь с фото товара на модель бренда
+  if (path === "/api/admin/ai-photo" && m === "POST") {
+    if (!GEMINI_KEY) return err(501, "no ai key");
+    const d = await req.json();
+    const pid = Number(d.product_id);
+    const p = must(await db.from("products").select("*").eq("id", pid).maybeSingle()) as Product | null;
+    if (!p) return err(404, "no product");
+    const src = String(d.photo || p.photos[0] || "");
+    if (!p.photos.includes(src)) return err(400, "photo not in product");
+    const scene = AI_PRESETS[d.preset] ?? AI_PRESETS.lisa;
+    const srcUrl = /^https?:/.test(src) ? src : `${Deno.env.get("SUPABASE_URL")}/storage/v1/object/public/uploads/${src}`;
+    const imgRes = await fetch(srcUrl);
+    if (!imgRes.ok) return err(502, "source photo unavailable");
+    const bytes = new Uint8Array(await imgRes.arrayBuffer());
+    let b64 = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) b64 += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    b64 = btoa(b64);
+    const prompt =
+      `Product photo for an online clothing store. Take the garment from the reference image and dress ${scene} in it. ` +
+      `Keep the garment exactly identical to the reference: same color and shade, material and texture, fur, collar, closures, buttons, zippers, pockets, belt, length, cut and proportions. ` +
+      `Do not add or remove any details of the garment. Simple neutral outfit underneath (plain top, straight jeans or trousers, simple shoes). ` +
+      `Realistic photo like a good smartphone shot, natural light, vertical 3:4 frame, the garment fully visible. No text, no logos, no watermarks, no brand names.` +
+      (d.extra ? ` Additional wishes: ${String(d.extra).slice(0, 300)}` : "");
+    let out: { data: string; mime: string } | null = null;
+    let lastErr = "";
+    for (const model of GEMINI_MODELS) {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_KEY },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: imgRes.headers.get("content-type") || "image/jpeg", data: b64 } }] }],
+          generationConfig: { responseModalities: ["IMAGE"] },
+        }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { lastErr = j?.error?.message ?? `HTTP ${r.status}`; if (r.status === 404) continue; break; }
+      for (const part of j?.candidates?.[0]?.content?.parts ?? []) {
+        const inl = part.inlineData ?? part.inline_data;
+        if (inl?.data) { out = { data: inl.data, mime: inl.mimeType ?? inl.mime_type ?? "image/png" }; break; }
+      }
+      if (out) break;
+      lastErr = "model returned no image";
+      break;
+    }
+    if (!out) { console.error("ai-photo:", lastErr); return err(502, `Нейросеть не вернула фото: ${lastErr}`.slice(0, 300)); }
+    const bin = Uint8Array.from(atob(out.data), (c) => c.charCodeAt(0));
+    const ext = out.mime.includes("png") ? "png" : "jpg";
+    const name = `ai_${crypto.randomUUID().replace(/-/g, "")}.${ext}`;
+    must(await db.storage.from("uploads").upload(name, bin, { contentType: out.mime }));
+    const photos = [...p.photos, name];
+    must(await db.from("products").update({ photos }).eq("id", pid));
+    return json({ ok: true, name, photos });
+  }
+
   if (path === "/api/admin/category" && m === "POST") {
     const d = await req.json();
     const name = String(d.name || "").trim().slice(0, 60);
