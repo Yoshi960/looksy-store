@@ -33,7 +33,7 @@ jobs:
         run: supabase db push --remote --include-all --yes -p "$SUPABASE_DB_PASSWORD"
       - name: Секреты функции
         run: |
-          supabase secrets set --project-ref "$REF" \
+          supabase secrets set --project-ref "$REF" --yes \
             BOT_TOKEN="${{ secrets.BOT_TOKEN }}" \
             ADMIN_IDS="${{ secrets.ADMIN_IDS }}" \
             SETUP_KEY="${{ secrets.SETUP_KEY }}" \
