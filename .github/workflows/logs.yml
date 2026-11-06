@@ -1,0 +1,25 @@
+name: Логи сервера
+
+on:
+  workflow_dispatch:
+
+jobs:
+  logs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Последние логи функции и хранилища
+        env:
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          START=$(date -u -d '-3 hours' +%Y-%m-%dT%H:%M:%SZ); END=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          for SQL in \
+            "select timestamp, event_message from function_logs order by timestamp desc limit 60" \
+            "select timestamp, event_message from function_edge_logs order by timestamp desc limit 40" \
+            "select timestamp, event_message from storage_logs order by timestamp desc limit 30"; do
+            echo "=== $SQL"
+            curl -sS -G "https://api.supabase.com/v1/projects/$REF/analytics/endpoints/logs.all" \
+              -H "Authorization: Bearer $TOKEN" --data-urlencode "sql=$SQL" \
+              --data-urlencode "iso_timestamp_start=$START" --data-urlencode "iso_timestamp_end=$END" \
+              | python3 -c "import json,sys; d=json.load(sys.stdin); [print(r.get('timestamp'), str(r.get('event_message'))[:400]) for r in (d.get('result') or [])] or print(d)"
+          done
