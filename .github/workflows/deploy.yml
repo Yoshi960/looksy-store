@@ -30,7 +30,7 @@ jobs:
       - name: Подключить проект
         run: supabase link --project-ref "$REF" -p "$SUPABASE_DB_PASSWORD"
       - name: Обновить базу
-        run: supabase db push --linked --include-all -p "$SUPABASE_DB_PASSWORD"
+        run: supabase db push --remote --include-all --yes -p "$SUPABASE_DB_PASSWORD"
       - name: Секреты функции
         run: |
           supabase secrets set --project-ref "$REF" \
@@ -40,7 +40,7 @@ jobs:
             WEBHOOK_SECRET="${{ secrets.SETUP_KEY }}" \
             WEBAPP_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
       - name: Опубликовать функцию
-        run: supabase functions deploy api --project-ref "$REF" --no-verify-jwt
+        run: supabase functions deploy api --project-ref "$REF" --no-verify-jwt --yes
       - name: Подключить бота (вебхук и кнопка «Каталог»)
         run: |
           curl -fsS -X POST "https://$REF.supabase.co/functions/v1/api/setup?key=${{ secrets.SETUP_KEY }}"
