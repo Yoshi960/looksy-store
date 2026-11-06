@@ -351,7 +351,23 @@ h2.sec2{font:800 16px var(--display);margin:22px 0 10px}
 const tg = window.Telegram?.WebApp?.initData !== undefined && window.Telegram?.WebApp?.platform !== 'unknown' ? window.Telegram.WebApp : null;
 const qs = new URLSearchParams(location.search);
 const START = tg?.initDataUnsafe?.start_param || '';
-const SOURCE = (qs.get('src') || START || 'direct').slice(0,40);
+let SOURCE = (qs.get('src') || START || 'direct').slice(0,40);
+// Человек пришёл по ссылке tiktok1, а купил через неделю, открыв бота из меню — заказ всё равно засчитаем tiktok1.
+const WEAK_SRC = ['direct','bot','menu','bot_msg','share','admin'];
+async function srcInit() {
+  const KEY = 'looksy_src', now = Date.now();
+  const raw = /^(p|l|r)_/.test(SOURCE) ? 'share' : SOURCE; SOURCE = raw;
+  if (!WEAK_SRC.includes(raw)) {
+    const v = JSON.stringify({s: raw, t: now});
+    try { localStorage.setItem(KEY, v); } catch(e) {}
+    try { tg?.CloudStorage?.setItem(KEY, v, () => {}); } catch(e) {}
+    return;
+  }
+  let v = null;
+  try { if (tg?.CloudStorage) v = await new Promise(r => tg.CloudStorage.getItem(KEY, (e, x) => r(e ? null : x))); } catch(e) {}
+  if (!v) try { v = localStorage.getItem(KEY); } catch(e) {}
+  try { const o = JSON.parse(v || 'null'); if (o?.s && now - o.t < 30*86400e3) SOURCE = o.s; } catch(e) {}
+}
 const GROUPS = [['w','Женщинам'],['m','Мужчинам']];
 const PROMO = {hit:['Хит','В блок «Выбор недели» и в начало каталога'], fast:['Быстро продать','Плашка «Успей» и в начало каталога'], margin:['Высокая маржа','В начало каталога, покупатель причину не видит'], '':['Обычный','Без продвижения']};
 const RANK = {hit:0, fast:1, margin:2, top:2};
@@ -1022,13 +1038,13 @@ async function renderOrders() {
 // ---------------------------------------------------------------- админка
 async function renderAdmin() {
   setBack(() => { S.view='shop'; renderShop(); }); window.scrollTo(0,0);
-  const tabs = [['products','Товары'],['looks','Образы'],['cats','Категории'],['orders','Заказы'],['reviews','Отзывы'],['stats','Статистика']];
+  const tabs = [['products','Товары'],['looks','Образы'],['cats','Категории'],['orders','Заказы'],['reviews','Отзывы'],['stats','Статистика'],['links','Ссылки']];
   $('#app').innerHTML = `<div class="top">${LOGO}<button class="iconbtn" id="toshop" aria-label="В витрину">${I.x}</button></div>
     <div class="atabs">${tabs.map(([k,t])=>`<button class="${S.tab===k?'on':''}" data-a="${k}">${t}</button>`).join('')}</div>
     <div id="pane"></div>`;
   $('#toshop').onclick = () => { S.view='shop'; renderShop(); };
   $$('[data-a]').forEach(b => b.onclick = () => { S.tab = b.dataset.a; renderAdmin(); });
-  ({products:aProducts, looks:aLooks, cats:aCats, orders:aOrders, reviews:aReviews, stats:aStats})[S.tab]();
+  ({products:aProducts, looks:aLooks, cats:aCats, orders:aOrders, reviews:aReviews, stats:aStats, links:aLinks})[S.tab]();
 }
 const catName = id => catOf(id)?.name || 'Без категории';
 const margin = p => p.cost ? `<span class="good">+${rub(p.price-p.cost)} · ${Math.round((p.price-p.cost)/p.price*100)}%</span>` : '<span>закупка не указана</span>';
@@ -1344,16 +1360,71 @@ async function aStats(days=S.days||7) {
     <h2 class="sec2">Товары</h2>
     <div class="tbl"><table class="t"><tr><th>Товар</th><th class="n">Просм.</th><th class="n">В корз.</th><th class="n">Продано</th></tr>
     ${d.by_product.map(p=>`<tr><td>${esc(p.title)}</td><td class="n">${p.views||0}</td><td class="n">${p.clicks||0}</td><td class="n">${p.sold||0}</td></tr>`).join('')}</table></div>
-    <h2 class="sec2">Ссылки для каналов</h2>
-    <p class="muted">У каждого канала своя ссылка — так видно, откуда пришли люди.</p>
-    ${['tiktok','tgchannel','avito','baraholka','vk'].map(s=>`<div class="code">t.me/${esc(S.bot||'ВАШ_БОТ')}?start=${s}</div>`).join('')}`;
+    <div class="hintbox">${I.check}<span>Ссылки с метками для каждого аккаунта и полная воронка по ним — во вкладке <button class="textbtn" id="tolinks">«Ссылки»</button></span></div>`;
+  $('#tolinks').onclick = () => { S.tab = 'links'; renderAdmin(); };
   $$('[data-d]').forEach(b => b.onclick = () => aStats(+b.dataset.d));
+}
+
+// ---------------------------------------------------------------- ссылки с метками
+const SRC_NAMES = {bot:'Бот без метки', menu:'Кнопка «Каталог»', bot_msg:'Сообщения бота', share:'«Поделиться» товаром или образом', direct:'Напрямую', admin:'Админ'};
+const linkUrl = code => `https://t.me/${S.bot||'ВАШ_БОТ'}?start=${code}`;
+const translit = t => t.toLowerCase().replace(/[а-яё]/g, c => ({а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'c',ч:'ch',ш:'sh',щ:'sch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya'})[c] ?? '').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,32);
+async function aLinks(days=S.ldays||30) {
+  S.ldays = days;
+  $('#pane').innerHTML = '<div class="muted">Загружаем…</div>';
+  let rows = [];
+  try { rows = await api('/api/admin/links?days='+days); } catch(e) { $('#pane').innerHTML = '<div class="empty"><b>Не загрузилось</b>Проверьте интернет</div>'; return; }
+  const pct = (a,b) => b ? Math.round(a/b*1000)/10+'%' : '—';
+  const links = rows.filter(r => r.is_link), other = rows.filter(r => !r.is_link && (r.starts||r.visitors||r.orders));
+  const tot = k => links.reduce((a,r)=>a+(+r[k]||0),0);
+  const card = r => `<div class="ord">
+      <div class="h"><b>${esc(r.title||r.code)}</b><span class="mtag">${esc(r.code)}</span></div>
+      <div class="trackbox" style="margin:0"><div class="num"><span style="font-size:13px;word-break:break-all">${esc(linkUrl(r.code))}</span>
+        <button class="iconbtn" style="width:36px;height:36px;flex:none" data-cp="${esc(r.code)}" aria-label="Скопировать ссылку">${I.copy}</button></div></div>
+      <div class="kpis" style="margin:4px 0 0">
+        <div class="kpi"><span class="muted">Переходы в бота</span><b>${r.starts}</b></div>
+        <div class="kpi"><span class="muted">Открыли магазин</span><b>${r.visitors}</b></div>
+        <div class="kpi"><span class="muted">Просмотры · в корзину</span><b>${r.views} · ${r.carts}</b></div>
+        <div class="kpi"><span class="muted">Заказы</span><b>${r.orders}</b><span class="muted">конверсия ${pct(r.orders, r.visitors)}</span></div>
+        <div class="kpi"><span class="muted">Оплачено</span><b>${r.paid} · ${rub(r.revenue)}</b></div>
+        <div class="kpi"><span class="muted">Прибыль</span><b class="good">${rub(r.profit)}</b></div>
+      </div>
+      <div class="h"><span class="muted">создана ${new Date(r.created_at*1000).toLocaleDateString('ru-RU')}</span>
+        <button class="linkback" data-ldel="${r.id}" style="color:var(--sale);padding:0">Удалить</button></div></div>`;
+  $('#pane').innerHTML = `
+    <div class="ai" style="margin-top:0"><h4>Новая ссылка</h4>
+      <div class="field" style="margin:0"><label for="ln_title">Для чего</label><input id="ln_title" placeholder="Например: TikTok аккаунт 1"></div>
+      <div class="field" style="margin:0"><label for="ln_code">Метка <i>латиница, цифры, _</i></label><input id="ln_code" placeholder="tiktok1" autocapitalize="off" autocomplete="off" spellcheck="false"></div>
+      <div class="opts">${['tiktok1','tiktok2','insta1','vk1','avito','baraholka','tgchannel'].filter(c=>!rows.some(r=>r.code===c&&r.is_link)).map(c=>`<button type="button" class="opt" data-sug="${c}">${c}</button>`).join('')}</div>
+      <button class="btn" id="ln_add">${I.plus}Создать ссылку</button>
+      <span class="muted">Ставьте свою ссылку на каждый аккаунт и площадку. Если человек пришёл по ссылке, а купил позже, открыв бота из меню, — заказ всё равно засчитается этой ссылке (30 дней).</span></div>
+    <div class="atabs" style="margin-top:16px">${[7,30,90].map(n=>`<button class="${days===n?'on':''}" data-ld="${n}">${n} дней</button>`).join('')}</div>
+    ${links.length ? `<div class="kpis"><div class="kpi"><span class="muted">Все ссылки: открыли магазин</span><b>${tot('visitors')}</b></div><div class="kpi"><span class="muted">Заказы · оплачено</span><b>${tot('orders')} · ${rub(tot('revenue'))}</b></div></div>` + links.map(card).join('')
+      : '<div class="empty"><b>Ссылок пока нет</b>Создайте первую — например, tiktok1 для первого TikTok-аккаунта</div>'}
+    ${other.length ? `<h2 class="sec2">Без ссылки с меткой</h2><div class="tbl"><table class="t"><tr><th>Источник</th><th class="n">Переходы</th><th class="n">Открыли</th><th class="n">Заказы</th><th class="n">Оплачено</th></tr>
+      ${other.map(r=>`<tr><td>${esc(SRC_NAMES[r.code]||r.code)}</td><td class="n">${r.starts}</td><td class="n">${r.visitors}</td><td class="n">${r.orders}</td><td class="n">${rub(r.revenue)}</td></tr>`).join('')}</table></div>` : ''}`;
+  let codeTouched = false;
+  $('#ln_code').oninput = () => { codeTouched = true; };
+  $('#ln_title').oninput = e => { if (!codeTouched) $('#ln_code').value = translit(e.target.value); };
+  $$('[data-sug]').forEach(b => b.onclick = () => { $('#ln_code').value = b.dataset.sug; codeTouched = true; if (!$('#ln_title').value) $('#ln_title').value = b.dataset.sug; });
+  $$('[data-ld]').forEach(b => b.onclick = () => aLinks(+b.dataset.ld));
+  $$('[data-cp]').forEach(b => b.onclick = () => { const u = linkUrl(b.dataset.cp); navigator.clipboard?.writeText(u).then(()=>toast('Ссылка скопирована'), ()=>toast(u)); haptic(); });
+  $$('[data-ldel]').forEach(b => b.onclick = async () => {
+    if (!confirmTap('ln'+b.dataset.ldel, 'Удалить ссылку? Статистика переходов сохранится в «Без ссылки с меткой».')) return;
+    await api('/api/admin/link/'+b.dataset.ldel, {method:'DELETE'}); toast('Ссылка удалена'); aLinks(days); });
+  $('#ln_add').onclick = async () => {
+    const code = $('#ln_code').value.trim().toLowerCase(), title = $('#ln_title').value.trim();
+    if (!/^[a-z0-9_]{2,32}$/.test(code)) return toast('Метка: латиница, цифры и _, от 2 символов');
+    $('#ln_add').disabled = true;
+    try { await api('/api/admin/link', {method:'POST', json:{code, title}}); toast('Ссылка создана — скопируйте её в профиль'); aLinks(days); }
+    catch(e) { toast(String(e.message||'Не получилось').slice(0,120)); $('#ln_add').disabled = false; }
+  };
 }
 
 // ---------------------------------------------------------------- старт
 (async () => {
   skeleton();
-  try { await load(); await cartLoad(); } catch(e) { $('#app').innerHTML = '<div class="empty"><b>Каталог не загрузился</b>Проверьте интернет и откройте ещё раз</div>'; return; }
+  try { await load(); await cartLoad(); await srcInit(); } catch(e) { $('#app').innerHTML = '<div class="empty"><b>Каталог не загрузился</b>Проверьте интернет и откройте ещё раз</div>'; return; }
   track('open');
   const rid = +(qs.get('review') || (START.startsWith('r_') ? START.slice(2) : 0));
   if (rid) return renderReview(rid);

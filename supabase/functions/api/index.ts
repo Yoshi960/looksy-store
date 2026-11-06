@@ -574,6 +574,27 @@ async function handle(req: Request): Promise<Response> {
     } else return err(400, "bad status");
     return json({ ok: true });
   }
+  // ссылки с метками
+  if (path === "/api/admin/links" && m === "GET") {
+    const days = Math.max(1, Math.min(365, intOrNull(url.searchParams.get("days")) ?? 30));
+    return json(must(await db.rpc("link_stats", { since: now() - days * 86400 })));
+  }
+  if (path === "/api/admin/link" && m === "POST") {
+    const d = await req.json();
+    const code = String(d.code || "").trim().toLowerCase();
+    const title = String(d.title || "").trim().slice(0, 60);
+    if (!/^[a-z0-9_]{2,32}$/.test(code)) return err(400, "Метка: 2–32 символа, латиница, цифры и _");
+    if (/^(p|l|r)_/.test(code) || ["direct", "bot", "share", "admin", "menu", "bot_msg"].includes(code)) return err(400, "Эта метка занята системой — придумайте другую");
+    const ex = must(await db.from("links").select("id").eq("code", code).maybeSingle());
+    if (ex) return err(409, "Такая метка уже есть");
+    const r = must(await db.from("links").insert({ code, title: title || code }).select().single());
+    return json(r);
+  }
+  if ((mm = path.match(/^\/api\/admin\/link\/(\d+)$/)) && m === "DELETE") {
+    must(await db.from("links").delete().eq("id", Number(mm[1])));
+    return json({ ok: true });
+  }
+
   if (path === "/api/admin/stats" && m === "GET") {
     const days = Number(url.searchParams.get("days") || 7);
     return json(must(await db.rpc("shop_stats", { since: now() - days * 86400 })));
@@ -623,7 +644,10 @@ async function onUpdate(u: { message?: { text?: string; chat: { id: number }; fr
         return;
       }
     }
-    const src = encodeURIComponent((arg || "bot").slice(0, 40));
+    const raw = (arg || "bot").slice(0, 40);
+    // переход по ссылке с меткой — считаем в статистике ссылок
+    await db.from("events").insert({ type: "start", user_id: msg.from?.id ?? null, source: raw });
+    const src = encodeURIComponent(raw);
     await tg("sendMessage", {
       chat_id: chat, parse_mode: "HTML",
       text: `Привет! Это <b>${escHtml(SHOP_NAME)}</b> 👋\n\nЖенская и мужская одежда напрямую с производства — без наценки маркетплейсов.\n\n` +
