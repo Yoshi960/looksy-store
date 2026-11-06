@@ -155,6 +155,8 @@ function productOut(p: Product, admin: boolean) {
   return q;
 }
 const PROMO = new Set(["hit", "fast", "margin"]);
+type Look = Record<string, unknown> & { id: number; title: string; photos: string[]; items: number[]; discount: number; active: boolean };
+const lookIds = (v: string) => { try { const a = JSON.parse(v || "[]"); return Array.isArray(a) ? [...new Set(a.map(Number).filter((x) => Number.isInteger(x) && x > 0))].slice(0, 12) : []; } catch { return []; } };
 const formStr = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 const formFiles = (f: FormData, k: string) => f.getAll(k).filter((x): x is File => x instanceof File);
 
@@ -206,17 +208,20 @@ async function handle(req: Request): Promise<Response> {
   }
 
   if (path === "/api/catalog" && m === "GET") {
-    const [cats, prods, summ] = await Promise.all([
+    const [cats, prods, summ, lks] = await Promise.all([
       db.from("categories").select("*").order("sort").order("id"),
       db.from("products").select("*").order("sort").order("id", { ascending: false }),
       db.rpc("review_summary"),
+      db.from("looks").select("*").order("sort").order("id", { ascending: false }),
     ]);
     const s = new Map((must(summ) as Array<Record<string, number>>).map((r) => [Number(r.product_id), r]));
     const products = (must(prods) as Product[]).map((p) => {
       const r = s.get(p.id);
       return { ...productOut(p, admin), rating: r ? { n: Number(r.n), avg: Number(r.avg), small: Number(r.small), ok: Number(r.ok), big: Number(r.big) } : null };
     });
-    return json({ categories: must(cats), products });
+    const looks = (must(lks) as Look[]).filter((l) => admin || l.active)
+      .map((l) => ({ ...l, discount: Math.max(0, Math.min(50, Number(l.discount) || 0)) }));
+    return json({ categories: must(cats), products, looks });
   }
 
   if (path === "/api/event" && m === "POST") {
@@ -244,7 +249,23 @@ async function handle(req: Request): Promise<Response> {
       if (!p.in_stock) return err(409, `«${p.title}» закончился — уберите его из корзины`);
       items.push({ product_id: p.id, title: p.title, price: Number(p.price), cost: p.cost === null ? null : Number(p.cost),
         size: String(x.size || "").slice(0, 20), color: String(x.color || "").slice(0, 40),
-        qty: Math.max(1, Math.min(10, intOrNull(x.qty) ?? 1)), photo: p.photos[0] ?? null });
+        qty: Math.max(1, Math.min(10, intOrNull(x.qty) ?? 1)), photo: p.photos[0] ?? null,
+        look: intOrNull(x.look) as number | null, look_title: null as string | null, base_price: Number(p.price) });
+    }
+    // скидка за образ: только если в заказе весь образ целиком (каждая вещь помечена этим образом)
+    const lids = [...new Set(items.map((i) => i.look).filter((x): x is number => x !== null))];
+    if (lids.length) {
+      const lks = must(await db.from("looks").select("*").in("id", lids)) as Look[];
+      for (const l of lks) {
+        const d = Math.max(0, Math.min(50, Number(l.discount) || 0));
+        const mine = items.filter((i) => i.look === l.id);
+        const full = l.active && l.items.length > 1 && l.items.every((pid) => mine.some((i) => i.product_id === Number(pid)));
+        for (const i of mine) {
+          i.look_title = l.title;
+          if (full && d) i.price = Math.round(i.base_price * (100 - d) / 100);
+        }
+      }
+      for (const i of items) if (i.look !== null && !i.look_title) i.look = null;
     }
     const total = items.reduce((a, i) => a + i.price * i.qty, 0);
     const cost = items.some((i) => i.cost === null) ? null : items.reduce((a, i) => a + (i.cost ?? 0) * i.qty, 0);
@@ -431,6 +452,43 @@ async function handle(req: Request): Promise<Response> {
     return json({ ok: true, name, photos });
   }
 
+  if (path === "/api/admin/look" && m === "POST") {
+    const f = await req.formData();
+    if (!formStr(f, "title")) return err(400, "title required");
+    const photos = await savePhotos(formFiles(f, "photos"));
+    const r = must(await db.from("looks").insert({
+      title: formStr(f, "title"), description: formStr(f, "description"), grp: formStr(f, "grp") === "m" ? "m" : "w",
+      items: lookIds(formStr(f, "items")), discount: Math.max(0, Math.min(50, intOrNull(formStr(f, "discount")) ?? 0)),
+      active: formStr(f, "active") !== "0", photos,
+    }).select("id").single()) as { id: number };
+    return json({ ok: true, id: r.id });
+  }
+  if ((mm = path.match(/^\/api\/admin\/look\/(\d+)$/))) {
+    const lid = Number(mm[1]);
+    const old = must(await db.from("looks").select("*").eq("id", lid).maybeSingle()) as Look | null;
+    if (!old) return err(404, "no look");
+    if (m === "DELETE") {
+      await removePhotos(old.photos);
+      must(await db.from("looks").delete().eq("id", lid));
+      return json({ ok: true });
+    }
+    if (m === "PUT") {
+      const f = await req.formData();
+      if (!formStr(f, "title")) return err(400, "title required");
+      let keep: string[] = [];
+      try { keep = JSON.parse(formStr(f, "keep_photos") || "[]"); } catch { /* пусто */ }
+      keep = keep.filter((x) => old.photos.includes(x));
+      await removePhotos(old.photos.filter((x) => !keep.includes(x)));
+      const added = await savePhotos(formFiles(f, "photos"));
+      must(await db.from("looks").update({
+        title: formStr(f, "title"), description: formStr(f, "description"), grp: formStr(f, "grp") === "m" ? "m" : "w",
+        items: lookIds(formStr(f, "items")), discount: Math.max(0, Math.min(50, intOrNull(formStr(f, "discount")) ?? 0)),
+        active: formStr(f, "active") !== "0", photos: [...keep, ...added],
+      }).eq("id", lid));
+      return json({ ok: true });
+    }
+  }
+
   if (path === "/api/admin/category" && m === "POST") {
     const d = await req.json();
     const name = String(d.name || "").trim().slice(0, 60);
@@ -525,7 +583,8 @@ async function notifyAdmins(o: Record<string, unknown>) {
     : o.username ? `в Telegram: @${o.username}` : `в Telegram: <a href="tg://user?id=${o.user_id}">написать</a>`;
   const items = (o.items as Array<Record<string, unknown>>).map((i, k) =>
     `${k + 1}. <b>${escHtml(String(i.title))}</b>${Number(i.qty) > 1 ? ` × ${i.qty}` : ""} — ${rub(Number(i.price) * Number(i.qty))}\n` +
-    `    размер: ${escHtml(String(i.size || "—"))}, цвет: ${escHtml(String(i.color || "—"))}`).join("\n");
+    `    размер: ${escHtml(String(i.size || "—"))}, цвет: ${escHtml(String(i.color || "—"))}` +
+    (i.look_title ? `\n    образ: «${escHtml(String(i.look_title))}»${Number(i.base_price) > Number(i.price) ? ` (скидка, было ${rub(Number(i.base_price) * Number(i.qty))})` : ""}` : "")).join("\n");
   const margin = o.cost !== null && o.cost !== undefined ? `\nМаржа: ${rub(Number(o.price) - Number(o.cost))}` : "";
   const text = `🛍 <b>Новый заказ #${o.id}</b>\n\n${items}\n\n<b>Итого: ${rub(Number(o.price))}</b>${margin}\n\n` +
     `Имя: ${escHtml(String(o.name))}\nСвязь: ${who}\nГород: ${escHtml(String(o.city || "—"))}\n` +
@@ -547,6 +606,13 @@ async function onUpdate(u: { message?: { text?: string; chat: { id: number }; fr
       const p = must(await db.from("products").select("id,title,price").eq("id", Number(arg.slice(2))).maybeSingle()) as { id: number; title: string; price: number } | null;
       if (p) {
         await tg("sendMessage", { chat_id: chat, text: `<b>${escHtml(p.title)}</b> — ${rub(p.price)}`, parse_mode: "HTML", reply_markup: appButton("👀 Посмотреть", `src=share&p=${p.id}`) });
+        return;
+      }
+    }
+    if (/^l_\d+$/.test(arg)) {
+      const l = must(await db.from("looks").select("id,title").eq("id", Number(arg.slice(2))).maybeSingle()) as { id: number; title: string } | null;
+      if (l) {
+        await tg("sendMessage", { chat_id: chat, text: `Готовый образ: <b>${escHtml(l.title)}</b>`, parse_mode: "HTML", reply_markup: appButton("👀 Посмотреть образ", `src=share&l=${l.id}`) });
         return;
       }
     }

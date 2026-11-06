@@ -167,7 +167,7 @@ img{max-width:100%}
 
 /* товар */
 .gal{position:relative;margin:-10px -16px 0}
-.gal{overflow:hidden}
+.gal{overflow:hidden;touch-action:pan-y}
 .gal .track{display:flex;touch-action:pan-y;transition:transform .32s cubic-bezier(.2,.8,.2,1);will-change:transform}
 .gal .track.drag{transition:none}
 .gal img{flex:none;width:100%;aspect-ratio:3/4;object-fit:cover;background:var(--surface2);display:block;user-select:none;-webkit-user-drag:none;pointer-events:none}
@@ -190,6 +190,34 @@ img{max-width:100%}
 .perk{background:var(--surface);border-radius:14px;padding:12px 10px;font-size:12px;color:var(--text2);line-height:1.3;display:flex;flex-direction:column;gap:6px}
 .perk .ico{color:var(--accent)}
 .perk b{color:var(--text);font-size:13px}
+/* готовые образы */
+.lcard{flex:none;width:64%;max-width:260px;scroll-snap-align:start;border:0;padding:0;background:none;color:#fff;text-align:left;position:relative;border-radius:22px;overflow:hidden;aspect-ratio:3/4}
+.lcard img{width:100%;height:100%;object-fit:cover;display:block}
+.lcard .ov{position:absolute;inset:auto 0 0 0;padding:44px 14px 14px;background:linear-gradient(transparent,rgba(0,0,0,.75));display:flex;flex-direction:column;gap:3px}
+.lcard .ov small{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.85}
+.lcard .ov b{font:800 17px var(--display)}
+.lcard .ov span{font-size:13px;opacity:.92;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.lcard .ov s{opacity:.7;font-size:12px;margin-left:6px;font-weight:600}
+.lcard .disc{position:absolute;left:12px;top:12px;background:var(--sale);color:#fff;border-radius:8px;padding:3px 8px;font-size:12px;font-weight:800}
+.lcard.sm{width:150px;aspect-ratio:3/4}
+.lcard.sm .ov{padding:30px 10px 10px}.lcard.sm .ov b{font-size:14px}
+.litem{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+.litem:last-child{border-bottom:0}
+.litem>button.ph{flex:none;border:0;padding:0;background:var(--surface2);border-radius:14px;overflow:hidden;width:84px;height:112px}
+.litem>button.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.litem .g{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+.litem .t{border:0;background:none;padding:0;text-align:left;color:var(--text);font-weight:700;font-size:14px;line-height:1.3}
+.litem .pr{font:800 15px var(--display);font-variant-numeric:tabular-nums}
+.litem .pr s{color:var(--hint);font-size:12px;font-weight:600;margin-left:6px}
+.litem .opts{gap:6px}.litem .opt{min-width:40px;padding:6px 10px;font-size:13px;border-radius:10px}
+.lookdisc{display:flex;gap:10px;align-items:center;background:var(--accent-soft);color:var(--text);border-radius:14px;padding:12px 14px;margin:14px 0 0;font-size:14px}
+.lookdisc b{color:var(--accent)}
+.pick{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.pick img,.pick i{width:44px;height:58px;border-radius:8px;object-fit:cover;background:var(--surface2);flex:none}
+.pick .g{flex:1;min-width:0;font-size:14px}.pick .g b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pick .mv{display:flex;gap:4px}.pick .mv button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-weight:700}
+.pick .mv button:disabled{opacity:.35}
+.picklist{max-height:320px;overflow-y:auto;border:1px solid var(--line);border-radius:14px;padding:0 10px;margin-top:8px}
 .similar{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
 .similar::-webkit-scrollbar{display:none}
 .similar .card{flex:none;width:132px}
@@ -324,7 +352,7 @@ const GROUPS = [['w','Женщинам'],['m','Мужчинам']];
 const PROMO = {hit:['Хит','В блок «Выбор недели» и в начало каталога'], fast:['Быстро продать','Плашка «Успей» и в начало каталога'], margin:['Высокая маржа','В начало каталога, покупатель причину не видит'], '':['Обычный','Без продвижения']};
 const RANK = {hit:0, fast:1, margin:2, top:2};
 const S = {shop:'LOOKSY STORE', bot:'', admin:false, cats:[], products:[], grp:'w', cat:null, q:'', searching:false,
-  f:{sort:'rec', sizes:[], max:'', stock:false}, view:'shop', tab:'products', favs:new Set()};
+  f:{sort:'rec', sizes:[], max:'', stock:false}, view:'shop', tab:'products', favs:new Set(), looks:[]};
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -368,6 +396,7 @@ function applyTheme() {
   try { tg?.setHeaderColor?.(bg); tg?.setBackgroundColor?.(bg); tg?.setBottomBarColor?.(bg); } catch(e){}
 }
 try { tg?.ready(); tg?.expand(); tg?.onEvent?.('themeChanged', applyTheme); } catch(e){}
+try { tg?.disableVerticalSwipes?.(); } catch(e){}  // иначе Telegram иногда «забирает» жест и галерея перестаёт листаться
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (!tg) applyTheme(); });
 applyTheme();
 
@@ -388,7 +417,7 @@ function setBack(fn){ try{ tg?.BackButton?.offClick?.(window.__bk); if(fn){ wind
 async function load() {
   const [me, cat] = await Promise.all([api('/api/me'), api('/api/catalog')]);
   S.shop = me.shop; S.bot = me.bot || ''; S.admin = me.is_admin; S.ai = !!me.ai;
-  S.cats = cat.categories.map(c=>({...c, grp:c.grp||'w'})); S.products = cat.products;
+  S.cats = cat.categories.map(c=>({...c, grp:c.grp||'w'})); S.products = cat.products; S.looks = (cat.looks||[]).map(l=>({...l, items:(l.items||[]).map(Number)}));
   try { S.favs = new Set(await api('/api/favs')); } catch(e) {}
 }
 
@@ -410,7 +439,7 @@ async function cartLoad() {
   let v = null;
   try { if (tg?.CloudStorage) v = await new Promise(r => tg.CloudStorage.getItem(CART_KEY, (e, x) => r(e ? null : x))); } catch(e) {}
   if (!v) try { v = localStorage.getItem(CART_KEY); } catch(e) {}
-  try { S.cart = (JSON.parse(v || '[]') || []).filter(i => S.products.some(p => p.id === i.pid)); } catch(e) { S.cart = []; }
+  try { S.cart = (JSON.parse(v || '[]') || []).filter(i => S.products.some(p => p.id === i.pid)).map(i => ({...i, look: i.look && S.looks.some(l=>l.id===i.look) ? i.look : null})); } catch(e) { S.cart = []; }
 }
 function cartSave() {
   const v = JSON.stringify(S.cart);
@@ -420,11 +449,24 @@ function cartSave() {
 }
 const cartCount = () => S.cart.reduce((a, i) => a + i.qty, 0);
 const cartLine = i => S.products.find(p => p.id === i.pid);
-function cartAdd(p, sel) {
-  const ex = S.cart.find(i => i.pid === p.id && i.size === (sel.size||'') && i.color === (sel.color||''));
-  if (ex) ex.qty = Math.min(10, ex.qty + 1); else S.cart.push({pid:p.id, size:sel.size||'', color:sel.color||'', qty:1});
+function cartAdd(p, sel, look=null) {
+  const ex = S.cart.find(i => i.pid === p.id && i.size === (sel.size||'') && i.color === (sel.color||'') && (i.look||null) === look);
+  if (ex) ex.qty = Math.min(10, ex.qty + 1); else S.cart.push({pid:p.id, size:sel.size||'', color:sel.color||'', qty:1, look});
   cartSave();
 }
+// ---------- образы
+const lookOf = id => S.looks.find(l => l.id === id);
+const lookItems = l => l.items.map(id => S.products.find(p => p.id === id)).filter(Boolean);
+const lookCover = l => l.photos[0] || lookItems(l).find(p => p.photos[0])?.photos[0] || '';
+const lookPrice = l => { const it = lookItems(l).filter(p => p.in_stock), sum = it.reduce((a,p)=>a+p.price,0);
+  const full = it.length === l.items.length && it.length > 1; return {sum, final: full && l.discount ? it.reduce((a,p)=>a+Math.round(p.price*(100-l.discount)/100),0) : sum, full}; };
+function lookFull(lid) { const l = lookOf(lid); if (!l || !l.discount || l.items.length < 2) return false;
+  return l.items.every(pid => S.cart.some(i => i.look === lid && i.pid === pid && cartLine(i)?.in_stock)); }
+const linePrice = i => { const p = cartLine(i); return i.look && lookFull(i.look) ? Math.round(p.price*(100-lookOf(i.look).discount)/100) : p.price; };
+function lcard(l, sm='') { const pr = lookPrice(l), n = lookItems(l).length;
+  return `<button class="lcard ${sm}" data-look="${l.id}">${lookCover(l)?`<img loading="lazy" src="${img(lookCover(l))}" alt="">`:''}${l.discount&&pr.full?`<span class="disc">−${l.discount}%</span>`:''}
+    <div class="ov"><small>Образ · ${plural(n,'вещь','вещи','вещей')}</small><b>${rub(pr.final)}${pr.final<pr.sum?`<s>${rub(pr.sum)}</s>`:''}</b>${sm?'':`<span>${esc(l.title)}</span>`}</div></button>`; }
+const bindLooks = (root=document, from) => root.querySelectorAll('[data-look]').forEach(b => b.onclick = () => openLook(+b.dataset.look, {from}));
 
 // ---------- нижнее меню
 function nav(active) {
@@ -495,6 +537,7 @@ function renderShop() {
   S.view='shop'; setBack(S.searching ? closeSearch : null);
   const cats = grpCats(), l = list(), fo = filtersOn();
   const hits = !S.q && !S.cat && !fo ? S.products.filter(p => p.promo==='hit' && p.in_stock && inGrp(p)) : [];
+  const looks = !S.q && !S.cat && !fo ? S.looks.filter(l => l.grp === S.grp && lookItems(l).length) : [];
   const title = S.q ? 'Поиск' : (S.cat ? catOf(S.cat)?.name : 'Все вещи');
   $('#app').innerHTML = `
     <div class="top">${LOGO}
@@ -505,6 +548,7 @@ function renderShop() {
     ${hits.length ? `<div class="hero-h"><h2>Выбор недели</h2></div><div class="hero">${hits.map(p=>`
       <button class="hcard" data-id="${p.id}">${p.photos[0]?`<img src="${img(p.photos[0])}" alt="">`:''}
         <div class="ov"><b>${rub(p.price)}</b><span>${esc(p.title)}</span></div></button>`).join('')}</div>` : ''}
+    ${looks.length ? `<div class="hero-h"><h2>Готовые образы</h2></div><div class="hero">${looks.map(l=>lcard(l)).join('')}</div>` : ''}
     ${cats.length ? `<div class="cats">
       <button class="tile ${!S.cat?'on':''}" data-c=""><div class="im"><div class="all">ВСЁ</div></div><span>Все вещи</span></button>
       ${cats.map(c=>{ const n=S.products.filter(p=>p.category_id===c.id).length, cv=coverOf(c.id);
@@ -523,6 +567,7 @@ function renderShop() {
   $('#allcats') && ($('#allcats').onclick = catSheet);
   $('#b_filter').onclick = filterSheet;
   bindCards();
+  bindLooks($('#app'), renderShop);
   bindNav();
   $('#b_admin') && ($('#b_admin').onclick = () => { S.view='admin'; renderAdmin(); });
 }
@@ -602,8 +647,9 @@ function share(p) {
 function openProduct(id, sel={}) {
   const p = S.products.find(x => x.id === id); if (!p) return renderShop();
   if (!sel.tracked) { track('view', id); sel.tracked = true; window.scrollTo(0,0); }
-  S.view = 'product'; setBack(renderShop);
+  S.view = 'product'; const back = sel.from || renderShop; setBack(back);
   const ph = p.photos.length ? p.photos : [''];
+  const inLooks = S.looks.filter(l => l.active !== false && l.items.includes(p.id) && lookItems(l).length > 1);
   const similar = S.products.filter(x => x.id!==p.id && x.in_stock && (x.category_id===p.category_id || (catOf(x.category_id)?.grp===catOf(p.category_id)?.grp))).sort((a,b)=>(b.category_id===p.category_id)-(a.category_id===p.category_id)).slice(0,6);
   $('#app').innerHTML = `
     <div class="gal"><div class="track" id="trk">${ph.map(f=>`<img src="${img(f)}" alt="">`).join('')}</div>
@@ -622,16 +668,18 @@ function openProduct(id, sel={}) {
         <div class="perk">${I.truck}<b>СДЭК</b>по всей России</div>
         <div class="perk">${I.shield}<b>Новая</b>вещь с биркой</div>
       </div>
+      ${inLooks.length?`<div class="lbl">Входит в образ</div><div class="similar">${inLooks.map(l=>lcard(l,'sm')).join('')}</div>`:''}
       <div id="revs"></div>
       ${similar.length?`<div class="lbl">Похожие</div><div class="similar">${similar.map(card).join('')}</div>`:''}
     </div>
     <div class="buybar"><div class="in"><div class="p">${rub(p.price)}${p.old_price>p.price?`<span class="old">${rub(p.old_price)}</span>`:''}</div>
       ${inCart(p, sel) ? `<button class="btn ghost" id="tocart">${I.check}В корзине — оформить</button>`
         : `<button class="btn" id="buy" ${p.in_stock?'':'disabled'}>${p.in_stock?I.bag+'В корзину':'Нет в наличии'}</button>`}</div></div>`;
-  $('#bk') && ($('#bk').onclick = renderShop);
+  $('#bk') && ($('#bk').onclick = back);
   $('#shr').onclick = () => share(p);
   $('#szh') && ($('#szh').onclick = sizeSheet);
-  gallery($('#trk'), ph.length);
+  gallery($('#trk'), ph.length, sel.ph||0, i => sel.ph = i);
+  bindLooks($('#app'), () => openProduct(id, sel));
   $$('.opt[data-k]').forEach(b => b.onclick = () => { sel[b.dataset.k] = b.dataset.v; haptic(); const y=scrollY; openProduct(id, sel); scrollTo(0,y); });
   bindCards($('#app'));
   if (p.rating) loadReviews(p);
@@ -648,39 +696,120 @@ function openProduct(id, sel={}) {
 }
 const inCart = (p, sel) => S.cart.some(i => i.pid === p.id && (!p.sizes.length || i.size === (sel.size || (p.sizes.length===1?p.sizes[0]:null))) && (!p.colors.length || i.color === (sel.color || (p.colors.length===1?p.colors[0]:null))));
 
-// Листание галереи строго по одному фото: короткий свайп — следующее, сильный — тоже только одно.
-function gallery(trk, n) {
-  if (!trk || n < 2) return;
-  let idx = 0, x0 = 0, y0 = 0, dx = 0, t0 = 0, dir = null;
-  const go = i => {
+// Листание галереи строго по одному фото. Жесты слушаем на рамке галереи, а не на ленте:
+// лента после первого свайпа уезжает влево, и касания по 2-му фото до неё не доходили — это и был баг.
+// Жест забираем себе (preventDefault), чтобы Telegram и браузер
+// не перехватывали его на полпути; прерванный жест (touchcancel) возвращает фото на место.
+function gallery(trk, n, start=0, onChange) {
+  if (!trk) return;
+  const box = trk.parentElement;
+  let idx = 0, x0 = 0, y0 = 0, dx = 0, t0 = 0, dir = null, active = false, swiped = false, tid = null;
+  const go = (i, anim=true) => {
     idx = Math.max(0, Math.min(n - 1, i));
+    if (!anim) trk.classList.add('drag');
     trk.style.transform = `translateX(${-idx * 100}%)`;
+    if (!anim) { void trk.offsetWidth; trk.classList.remove('drag'); }
     $('#cnt') && ($('#cnt').textContent = `${idx + 1} / ${n}`);
     $$('#dots i').forEach((d, k) => d.classList.toggle('on', k === idx));
+    onChange?.(idx);
   };
-  trk.addEventListener('touchstart', e => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; dx = 0; dir = null; t0 = Date.now(); }, {passive:true});
-  trk.addEventListener('touchmove', e => {
-    const t = e.touches[0], mx = t.clientX - x0, my = t.clientY - y0;
-    if (!dir) dir = Math.abs(mx) > Math.abs(my) + 4 ? 'x' : (Math.abs(my) > 8 ? 'y' : null);
+  go(start, false);
+  if (n < 2) return;
+  const finish = ok => {
+    if (!active) return;
+    active = false; trk.classList.remove('drag');
+    if (dir === 'x') {
+      const fast = Math.abs(dx) > 25 && Date.now() - t0 < 280;
+      if (ok && (Math.abs(dx) > trk.clientWidth * 0.15 || fast)) { go(idx + (dx < 0 ? 1 : -1)); haptic(); } else go(idx);
+    }
+    dir = null; dx = 0;
+  };
+  // следим за одним конкретным пальцем: «зависшее» касание или второй палец не ломают листание
+  const mine = list => [...list].find(t => t.identifier === tid);
+  box.addEventListener('touchstart', e => {
+    if (e.target.closest('button')) return;
+    if (active && mine(e.touches)) return;            // второй палец во время свайпа — игнорируем
+    const t = e.changedTouches[0]; tid = t.identifier;
+    x0 = t.clientX; y0 = t.clientY; dx = 0; dir = null; t0 = Date.now(); active = true; swiped = false;
+    trk.classList.remove('drag');
+  }, {passive:true});
+  box.addEventListener('touchmove', e => {
+    if (!active) return;
+    const t = mine(e.touches); if (!t) return;
+    const mx = t.clientX - x0, my = t.clientY - y0;
+    if (!dir) { if (Math.abs(mx) < 6 && Math.abs(my) < 6) return; dir = Math.abs(mx) > Math.abs(my) ? 'x' : 'y'; }
     if (dir !== 'x') return;
-    dx = mx;
+    if (e.cancelable) e.preventDefault();
+    swiped = true; dx = mx;
     const edge = (idx === 0 && dx > 0) || (idx === n - 1 && dx < 0) ? 0.3 : 1;  // упругий край
     trk.classList.add('drag');
     trk.style.transform = `translateX(calc(${-idx * 100}% + ${dx * edge}px))`;
-  }, {passive:true});
-  trk.addEventListener('touchend', () => {
-    trk.classList.remove('drag');
-    if (dir === 'x') {
-      const fast = Math.abs(dx) > 25 && Date.now() - t0 < 250;
-      if (Math.abs(dx) > trk.clientWidth * 0.18 || fast) { go(idx + (dx < 0 ? 1 : -1)); haptic(); } else go(idx);
-    }
-    dir = null; dx = 0;
-  });
-  // на компьютере — клик по левой/правой половине
-  trk.parentElement.addEventListener('click', e => {
+  }, {passive:false});
+  box.addEventListener('touchend', e => { if (mine(e.changedTouches)) finish(true); });
+  box.addEventListener('touchcancel', e => { if (mine(e.changedTouches) || !e.touches.length) finish(false); });
+  // тап: левая половина — назад, правая — вперёд (и на телефоне, и на компьютере)
+  box.addEventListener('click', e => {
+    if (swiped) { swiped = false; return; }
     if (e.target.closest('button')) return;
     const r = trk.getBoundingClientRect();
     go(idx + (e.clientX - r.left > r.width / 2 ? 1 : -1));
+  });
+}
+
+// ---------------------------------------------------------------- готовый образ
+function openLook(id, sel={}) {
+  const l = lookOf(id); if (!l) return renderShop();
+  if (!sel.top) { window.scrollTo(0,0); sel.top = true; }
+  sel.ch ??= {};
+  S.view = 'look'; const back = sel.from || renderShop; setBack(back);
+  const items = lookItems(l), pr = lookPrice(l);
+  const ph = l.photos.length ? l.photos : items.map(p => p.photos[0]).filter(Boolean);
+  const need = p => ({color: p.colors.length > 1, size: p.sizes.length > 1});
+  const inCartAll = items.length && items.every(p => !p.in_stock || S.cart.some(i => i.pid === p.id && i.look === l.id));
+  const self = () => openLook(id, sel);
+  $('#app').innerHTML = `
+    <div class="gal"><div class="track" id="trk">${(ph.length?ph:['']).map(f=>`<img src="${img(f)}" alt="">`).join('')}</div>
+      ${ph.length>1?`<div class="count" id="cnt">1 / ${ph.length}</div><div class="dots" id="dots">${ph.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>`:''}
+      ${tg?'':`<button class="iconbtn tl" id="bk" aria-label="Назад">${I.back}</button>`}
+      <div class="tr"><button class="iconbtn" id="shr" aria-label="Поделиться">${I.share}</button></div></div>
+    <div class="info">
+      <div class="badges"><span class="tag hit">ОБРАЗ</span>${l.discount&&pr.full?`<span class="tag sale">−${l.discount}%</span>`:''}</div>
+      <h1>${esc(l.title)}</h1>
+      ${l.discount&&items.length>1?`<div class="lookdisc">${I.check}<span>Берёте образ целиком — <b>скидка ${l.discount}%</b> на все вещи из него</span></div>`:''}
+      ${l.description?`<div class="lbl">Об образе</div><p class="desc">${esc(l.description)}</p>`:''}
+      <div class="lbl">Что в образе <span>${plural(items.length,'вещь','вещи','вещей')}</span></div>
+      ${items.map(p => { const c = sel.ch[p.id] ||= {}, nd = need(p), dp = pr.full && l.discount ? Math.round(p.price*(100-l.discount)/100) : p.price;
+        return `<div class="litem"><button class="ph" data-open="${p.id}" aria-label="Открыть товар">${p.photos[0]?`<img loading="lazy" src="${img(p.photos[0])}" alt="">`:''}</button>
+          <div class="g"><button class="t" data-open="${p.id}">${esc(p.title)}</button>
+            <div class="pr">${rub(dp)}${dp<p.price?`<s>${rub(p.price)}</s>`:''}</div>
+            ${!p.in_stock?'<span class="warn">Нет в наличии — образ соберём без неё</span>':''}
+            ${p.in_stock&&nd.color?`<div class="opts">${p.colors.map(v=>`<button class="opt ${c.color===v?'on':''}" data-p="${p.id}" data-k="color" data-v="${esc(v)}">${esc(v)}</button>`).join('')}</div>`:''}
+            ${p.in_stock&&nd.size?`<div class="opts">${p.sizes.map(v=>`<button class="opt ${c.size===v?'on':''}" data-p="${p.id}" data-k="size" data-v="${esc(v)}">${esc(v)}</button>`).join('')}</div>`:''}
+          </div></div>`; }).join('')}
+      <div style="height:8px"></div><button class="textbtn" id="szh">${I.ruler}Как подобрать размер</button>
+    </div>
+    <div class="buybar"><div class="in"><div class="p">${rub(pr.final)}${pr.final<pr.sum?`<span class="old">${rub(pr.sum)}</span>`:''}</div>
+      ${inCartAll ? `<button class="btn ghost" id="tocart">${I.check}Образ в корзине — оформить</button>`
+        : `<button class="btn" id="buy" ${items.some(p=>p.in_stock)?'':'disabled'}>${I.bag}Весь образ в корзину</button>`}</div></div>`;
+  $('#bk') && ($('#bk').onclick = back);
+  $('#shr').onclick = () => { const link = S.bot ? `https://t.me/${S.bot}?start=l_${l.id}` : location.href;
+    if (tg?.openTelegramLink && S.bot) return tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent('Образ: '+l.title)}`);
+    navigator.clipboard?.writeText(link).then(()=>toast('Ссылка на образ скопирована'), ()=>toast(link)); };
+  $('#szh').onclick = sizeSheet;
+  gallery($('#trk'), Math.max(1, ph.length), sel.ph||0, i => sel.ph = i);
+  $$('[data-open]').forEach(b => b.onclick = () => openProduct(+b.dataset.open, {from: self}));
+  $$('.opt[data-p]').forEach(b => b.onclick = () => { sel.ch[+b.dataset.p][b.dataset.k] = b.dataset.v; haptic(); const y=scrollY; self(); scrollTo(0,y); });
+  $('#tocart') && ($('#tocart').onclick = renderCart);
+  $('#buy') && ($('#buy').onclick = () => {
+    const avail = items.filter(p => p.in_stock);
+    for (const p of avail) { const c = sel.ch[p.id], nd = need(p);
+      if (nd.color && !c.color) return toast(`Выберите цвет: ${p.title}`);
+      if (nd.size && !c.size) return toast(`Выберите размер: ${p.title}`); }
+    for (const p of avail) { const c = sel.ch[p.id]; cartAdd(p, {color: c.color ?? p.colors[0] ?? '', size: c.size ?? p.sizes[0] ?? ''}, l.id); }
+    track('order_click', avail[0]?.id);
+    try{ tg?.HapticFeedback?.notificationOccurred?.('success'); }catch(e){}
+    toast(avail.length < items.length ? 'Добавили в корзину вещи, которые есть в наличии' : `Образ в корзине${l.discount&&items.length>1?` · скидка ${l.discount}%`:''}`);
+    const y = scrollY; self(); scrollTo(0, y);
   });
 }
 
@@ -760,18 +889,21 @@ async function renderReview(oid, pid) {
 function renderCart() {
   S.view='cart'; setBack(renderShop);
   const lines = S.cart.map((i, k) => ({...i, k, p: cartLine(i)})).filter(x => x.p);
-  const total = lines.filter(x => x.p.in_stock).reduce((a, x) => a + x.p.price * x.qty, 0);
+  const total = lines.filter(x => x.p.in_stock).reduce((a, x) => a + linePrice(x) * x.qty, 0);
   const bad = lines.some(x => !x.p.in_stock);
+  const partial = [...new Set(lines.filter(x => x.look && !lookFull(x.look) && lookOf(x.look)?.discount).map(x => x.look))];
   $('#app').innerHTML = `<h1 class="page">Корзина</h1>
     ${lines.length ? lines.map(x => `<div class="citem2">
         ${x.p.photos[0]?`<img src="${img(x.p.photos[0])}" alt="" data-open="${x.p.id}">`:'<i></i>'}
         <div class="g"><div class="t" data-open="${x.p.id}">${esc(x.p.title)}</div>
           <div class="muted">${[x.color, x.size && 'размер '+x.size].filter(Boolean).map(esc).join(' · ')}</div>
+          ${x.look&&lookOf(x.look)?`<div><span class="mtag" style="margin:0">Образ «${esc(lookOf(x.look).title)}»${lookFull(x.look)?' −'+lookOf(x.look).discount+'%':''}</span></div>`:''}
           ${x.p.in_stock?'':'<span class="warn">Закончился — уберите из корзины</span>'}
           <button class="rm" data-rm="${x.k}">Удалить</button>
-          <div class="row"><span class="pr">${rub(x.p.price*x.qty)}</span>
+          <div class="row"><span class="pr">${rub(linePrice(x)*x.qty)}${linePrice(x)<x.p.price?` <s class="muted" style="font-size:12px;font-weight:600">${rub(x.p.price*x.qty)}</s>`:''}</span>
             <div class="qty"><button data-q="${x.k}" data-d="-1" aria-label="Меньше">−</button><span>${x.qty}</span><button data-q="${x.k}" data-d="1" aria-label="Больше">+</button></div></div></div></div>`).join('')
       + `<div class="total"><span>Итого · ${plural(lines.filter(x=>x.p.in_stock).reduce((a,x)=>a+x.qty,0),'вещь','вещи','вещей')}</span><b>${rub(total)}</b></div>
+         ${partial.map(id=>`<div class="hintbox">${I.check}<span>Соберите образ «${esc(lookOf(id).title)}» целиком — и получите скидку ${lookOf(id).discount}% на все его вещи. <button class="textbtn" data-look="${id}">Открыть образ</button></span></div>`).join('')}
          <p class="muted">Доставка СДЭК или Почтой России. Оплата — после того, как менеджер подтвердит наличие.</p>
          <div style="height:8px"></div><button class="btn" id="checkout" ${bad||!total?'disabled':''}>${bad?'Уберите закончившиеся вещи':'Оформить заказ'}</button>`
       : `<div class="empty"><b>В корзине пусто</b>Добавляйте вещи кнопкой «В корзину» в карточке товара — оформите всё одним заказом.</div>
@@ -783,13 +915,14 @@ function renderCart() {
   $$('[data-q]').forEach(b => b.onclick = () => { const it = S.cart[+b.dataset.q]; it.qty = Math.max(1, Math.min(10, it.qty + (+b.dataset.d))); haptic(); cartSave(); renderCart(); });
   $$('[data-rm]').forEach(b => b.onclick = () => { S.cart.splice(+b.dataset.rm, 1); haptic(); cartSave(); renderCart(); });
   $('#checkout') && ($('#checkout').onclick = () => openCheckout());
+  bindLooks($('#app'), renderCart);
 }
 
 function openCheckout(st={}) {
   window.scrollTo(0,0); setBack(renderCart);
   const lines = S.cart.map(i => ({...i, p: cartLine(i)})).filter(x => x.p && x.p.in_stock);
   if (!lines.length) return renderCart();
-  const total = lines.reduce((a, x) => a + x.p.price * x.qty, 0);
+  const total = lines.reduce((a, x) => a + linePrice(x) * x.qty, 0);
   const u = tg?.initDataUnsafe?.user;
   st.contact ??= 'tg';
   st.name ??= u?.first_name || '';
@@ -799,7 +932,7 @@ function openCheckout(st={}) {
     <h1 class="page">Оформление</h1>
     <div class="mini" style="flex-direction:column;align-items:stretch;gap:8px">${lines.map(x => `<div style="display:flex;gap:10px;align-items:center">
       <img src="${img(x.p.photos[0])}" alt="" style="width:44px;height:58px"><div class="g"><b style="font-size:14px">${esc(x.p.title)}</b>
-      <div class="muted">${[x.color, x.size && 'размер '+x.size, x.qty>1 && x.qty+' шт.'].filter(Boolean).map(esc).join(' · ')}</div></div><b>${rub(x.p.price*x.qty)}</b></div>`).join('')}</div>
+      <div class="muted">${[x.color, x.size && 'размер '+x.size, x.qty>1 && x.qty+' шт.'].filter(Boolean).map(esc).join(' · ')}</div></div><b>${rub(linePrice(x)*x.qty)}</b></div>`).join('')}</div>
     <div class="field"><label for="f_name">Как к вам обращаться</label><input id="f_name" autocomplete="given-name" value="${esc(st.name)}"></div>
     <div class="field"><label>Как с вами связаться</label>
       <div class="seg" style="margin:0"><button data-ct="tg" class="${st.contact==='tg'?'on':''}">Telegram</button><button data-ct="phone" class="${st.contact==='phone'?'on':''}">Телефон</button></div></div>
@@ -819,10 +952,10 @@ function openCheckout(st={}) {
     if (st.contact==='phone' && (st.phone||'').replace(/\D/g,'').length < 10) return toast('Проверьте номер телефона');
     $('#send').disabled = true; $('#send').textContent = 'Отправляем…';
     try {
-      const r = await api('/api/order', {method:'POST', json:{items: lines.map(x => ({product_id:x.pid, size:x.size, color:x.color, qty:x.qty})),
+      const r = await api('/api/order', {method:'POST', json:{items: lines.map(x => ({product_id:x.pid, size:x.size, color:x.color, qty:x.qty, look:x.look||null})),
         name, contact:st.contact, phone: st.contact==='phone' ? st.phone : '', city:st.city, comment:st.comment, source:SOURCE}});
       try{ tg?.HapticFeedback?.notificationOccurred?.('success'); }catch(e){}
-      S.cart = S.cart.filter(i => !lines.some(x => x.pid===i.pid && x.size===i.size && x.color===i.color)); cartSave();
+      S.cart = S.cart.filter(i => !lines.some(x => x.pid===i.pid && x.size===i.size && x.color===i.color && (x.look||null)===(i.look||null))); cartSave();
       setBack(null);
       $('#app').innerHTML = `<div class="ok"><div class="ring">${I.check}</div><h1 class="page">Заказ №${r.order_id} принят</h1>
         <p class="muted">${st.contact==='tg' ? 'Менеджер напишет вам в Telegram' : 'Менеджер позвонит или напишет вам'}, подтвердит наличие и детали доставки. Статус заказа и трек-номер — в разделе «Заказы».</p>
@@ -874,13 +1007,13 @@ async function renderOrders() {
 // ---------------------------------------------------------------- админка
 async function renderAdmin() {
   setBack(() => { S.view='shop'; renderShop(); }); window.scrollTo(0,0);
-  const tabs = [['products','Товары'],['cats','Категории'],['orders','Заказы'],['reviews','Отзывы'],['stats','Статистика']];
+  const tabs = [['products','Товары'],['looks','Образы'],['cats','Категории'],['orders','Заказы'],['reviews','Отзывы'],['stats','Статистика']];
   $('#app').innerHTML = `<div class="top">${LOGO}<button class="iconbtn" id="toshop" aria-label="В витрину">${I.x}</button></div>
     <div class="atabs">${tabs.map(([k,t])=>`<button class="${S.tab===k?'on':''}" data-a="${k}">${t}</button>`).join('')}</div>
     <div id="pane"></div>`;
   $('#toshop').onclick = () => { S.view='shop'; renderShop(); };
   $$('[data-a]').forEach(b => b.onclick = () => { S.tab = b.dataset.a; renderAdmin(); });
-  ({products:aProducts, cats:aCats, orders:aOrders, reviews:aReviews, stats:aStats})[S.tab]();
+  ({products:aProducts, looks:aLooks, cats:aCats, orders:aOrders, reviews:aReviews, stats:aStats})[S.tab]();
 }
 const catName = id => catOf(id)?.name || 'Без категории';
 const margin = p => p.cost ? `<span class="good">+${rub(p.price-p.cost)} · ${Math.round((p.price-p.cost)/p.price*100)}%</span>` : '<span>закупка не указана</span>';
@@ -1018,6 +1151,86 @@ function productForm(p) {
   draw();
 }
 
+function aLooks() {
+  $('#pane').innerHTML = `<button class="btn" id="add">${I.plus}Собрать образ</button><div style="height:6px"></div>
+    ${S.looks.map(l=>{ const pr = lookPrice(l), it = lookItems(l), cost = it.reduce((a,p)=>a+(p.cost||0),0);
+      return `<button class="lrow" data-id="${l.id}">${lookCover(l)?`<img src="${img(lookCover(l))}" alt="">`:'<i></i>'}<div class="g">
+      <div class="t">${esc(l.title)}</div>
+      <div class="muted">${plural(it.length,'вещь','вещи','вещей')} · ${rub(pr.final)}${l.discount?`<span class="mtag">−${l.discount}%</span>`:''}${l.grp==='m'?' · мужской':''}${l.active?'':' · скрыт'}</div>
+      ${it.every(p=>p.cost)?`<div class="muted"><span class="good">маржа +${rub(pr.final-cost)}</span></div>`:''}</div></button>`; }).join('')
+      || '<div class="empty"><b>Образов пока нет</b>Соберите первый: например, шуба + ботильоны + браслет. Сначала добавьте эти вещи как обычные товары, потом объедините их здесь.</div>'}`;
+  $('#add').onclick = () => lookForm();
+  $$('#pane .lrow').forEach(r => r.onclick = () => lookForm(S.looks.find(l=>l.id===+r.dataset.id)));
+}
+
+function lookForm(l) {
+  window.scrollTo(0,0);
+  const isNew = !l;
+  l = l ? {...l, items:[...l.items]} : {title:'', description:'', grp:S.grp||'w', discount:10, items:[], active:true, photos:[]};
+  const keep = [...l.photos]; let files = [], q = '';
+  const stash = () => Object.assign(l, {title:$('#l_title').value, description:$('#l_desc').value, discount:+($('#l_disc').value.replace(/\D/g,''))||0, active:$('#l_act').checked});
+  const draw = () => {
+    const it = lookItems(l), sum = it.reduce((a,p)=>a+p.price,0), fin = it.reduce((a,p)=>a+Math.round(p.price*(100-Math.min(50,l.discount))/100),0), cost = it.reduce((a,p)=>a+(p.cost||0),0);
+    const found = S.products.filter(p => !l.items.includes(p.id) && (!q || p.title.toLowerCase().includes(q.toLowerCase())));
+    $('#pane').innerHTML = `
+      <button class="linkback" id="bk">${I.back}К образам</button>
+      <h1 class="page">${isNew?'Новый образ':'Образ'}</h1>
+      <div class="field"><label>Фото образа — первое станет обложкой <i>необязательно</i></label>
+        <div class="thumbs">${keep.map((f,i)=>`<div class="thumb"><img src="${img(f)}" alt="">${i===0?'<span class="main">Обложка</span>':''}<button data-k="${i}" aria-label="Удалить фото">×</button>
+          <div class="mv"><button type="button" data-mv="${i}" data-d="-1" ${i===0?'disabled':''} aria-label="Сдвинуть влево">←</button><button type="button" data-mv="${i}" data-d="1" ${i===keep.length-1?'disabled':''} aria-label="Сдвинуть вправо">→</button></div></div>`).join('')}
+        ${files.map((f,i)=>`<div class="thumb"><img src="${URL.createObjectURL(f)}" alt=""><button data-n="${i}" aria-label="Удалить фото">×</button></div>`).join('')}</div>
+        <div class="muted" style="margin-bottom:8px">Лучше всего — одно фото, где весь образ надет целиком. Без фото обложкой станут фото вещей.</div>
+        <label class="file">${I.photo}Добавить фото<input type="file" id="l_files" accept="image/*" multiple></label></div>
+      <div class="field"><label for="l_title">Название</label><input id="l_title" value="${esc(l.title)}" placeholder="Например: Зимний вечер в городе"></div>
+      <div class="field"><label>Раздел</label><div class="seg" style="margin:0">${GROUPS.map(([k,t])=>`<button type="button" data-lg="${k}" class="${l.grp===k?'on':''}">${t}</button>`).join('')}</div></div>
+      <div class="field"><label for="l_desc">Описание <i>необязательно</i></label><textarea id="l_desc" placeholder="Куда надеть, с чем сочетается">${esc(l.description)}</textarea></div>
+      <div class="field"><label>Вещи в образе — по порядку</label>
+        ${it.length ? it.map((p,i)=>`<div class="pick">${p.photos[0]?`<img src="${img(p.photos[0])}" alt="">`:'<i></i>'}<div class="g"><b>${esc(p.title)}</b><span class="muted">${rub(p.price)}${p.in_stock?'':' · нет в наличии'}</span></div>
+          <div class="mv"><button type="button" data-im="${i}" data-d="-1" ${i?'':'disabled'} aria-label="Выше">↑</button><button type="button" data-im="${i}" data-d="1" ${i===it.length-1?'disabled':''} aria-label="Ниже">↓</button><button type="button" data-ir="${p.id}" aria-label="Убрать из образа">×</button></div></div>`).join('')
+          : '<div class="muted">Пока пусто — добавьте вещи из списка ниже</div>'}
+        <div class="field" style="margin:12px 0 0"><input id="l_q" placeholder="Найти товар: шуба, ботильоны, браслет…" value="${esc(q)}" aria-label="Поиск товара"></div>
+        <div class="picklist">${found.slice(0,40).map(p=>`<button type="button" class="pick" style="width:100%;border-left:0;border-right:0;border-top:0;background:none;color:var(--text);text-align:left" data-ia="${p.id}">${p.photos[0]?`<img src="${img(p.photos[0])}" alt="">`:'<i></i>'}<div class="g"><b>${esc(p.title)}</b><span class="muted">${rub(p.price)} · ${esc(catName(p.category_id))}</span></div><span style="color:var(--accent);font-weight:800">${I.plus}</span></button>`).join('') || '<div class="muted" style="padding:12px 0">Ничего не нашли</div>'}</div></div>
+      <div class="field"><label for="l_disc">Скидка за весь образ, % <i>0 — без скидки, максимум 50</i></label><input id="l_disc" inputmode="numeric" value="${l.discount||0}"></div>
+      ${it.length?`<div class="hintbox">${I.check}<span>Вещи по отдельности: <b>${rub(sum)}</b> · образ: <b>${rub(fin)}</b>${it.every(p=>p.cost)?` · маржа <b>${rub(fin-cost)}</b>`:''}</span></div>`:''}
+      <label class="check"><input type="checkbox" id="l_act" ${l.active?'checked':''}> Показывать в каталоге</label>
+      <button class="btn" id="save">Сохранить</button>
+      ${isNew?'':'<div style="height:10px"></div><button class="btn danger" id="del">Удалить образ</button>'}`;
+    $('#bk').onclick = aLooks;
+    $('#l_files').onchange = e => { stash(); files.push(...e.target.files); draw(); };
+    $('#l_disc').onchange = () => { stash(); draw(); };
+    $('#l_q').oninput = e => { stash(); q = e.target.value; const pos = e.target.selectionStart; draw(); const x=$('#l_q'); x.focus(); x.setSelectionRange(pos,pos); };
+    $$('[data-lg]').forEach(b => b.onclick = () => { stash(); l.grp = b.dataset.lg; draw(); });
+    $$('[data-ia]').forEach(b => b.onclick = () => { stash(); if (l.items.length >= 12) return toast('В образе максимум 12 вещей'); l.items.push(+b.dataset.ia); haptic(); draw(); });
+    $$('[data-ir]').forEach(b => b.onclick = () => { stash(); l.items = l.items.filter(x => x !== +b.dataset.ir); draw(); });
+    $$('[data-im]').forEach(b => b.onclick = () => { stash(); const ids = lookItems(l).map(p=>p.id), i=+b.dataset.im, j=i+(+b.dataset.d); [ids[i],ids[j]]=[ids[j],ids[i]]; l.items = ids; draw(); });
+    $$('[data-k]').forEach(b => b.onclick = () => { stash(); keep.splice(+b.dataset.k,1); draw(); });
+    $$('[data-mv]').forEach(b => b.onclick = () => { stash(); const i=+b.dataset.mv, j=i+(+b.dataset.d); [keep[i],keep[j]]=[keep[j],keep[i]]; draw(); });
+    $$('[data-n]').forEach(b => b.onclick = () => { stash(); files.splice(+b.dataset.n,1); draw(); });
+    $('#save').onclick = save;
+    $('#del') && ($('#del').onclick = del);
+  };
+  async function save() {
+    stash();
+    if (!l.title.trim()) return toast('Введите название образа');
+    if (lookItems(l).length < 2) return toast('Добавьте в образ хотя бы 2 вещи');
+    const fd = new FormData();
+    fd.append('title', l.title); fd.append('description', l.description); fd.append('grp', l.grp);
+    fd.append('discount', String(Math.min(50, l.discount||0))); fd.append('items', JSON.stringify(lookItems(l).map(p=>p.id)));
+    fd.append('active', l.active?'1':'0'); fd.append('keep_photos', JSON.stringify(keep));
+    $('#save').disabled = true; $('#save').textContent = files.length ? 'Загружаем фото…' : 'Сохраняем…';
+    for (const f of files) { const x = await shrink(f); fd.append('photos', x, x.name); }
+    try {
+      await api(isNew ? '/api/admin/look' : `/api/admin/look/${l.id}`, {method: isNew?'POST':'PUT', body: fd});
+      await load(); toast('Образ сохранён'); aLooks();
+    } catch(e) { toast('Не сохранилось: ' + e.message); $('#save').disabled = false; $('#save').textContent = 'Сохранить'; }
+  }
+  async function del() {
+    if (!confirmTap('dell'+l.id, 'Удалить образ? Вещи останутся в каталоге.')) return;
+    await api(`/api/admin/look/${l.id}`, {method:'DELETE'}); await load(); toast('Образ удалён'); aLooks();
+  }
+  draw();
+}
+
 function aCats() {
   $('#pane').innerHTML = `
     <div class="field"><label for="c_new">Новая категория</label><input id="c_new" placeholder="Например: Шубы"></div>
@@ -1129,6 +1342,9 @@ async function aStats(days=S.days||7) {
   const rid = +(qs.get('review') || (START.startsWith('r_') ? START.slice(2) : 0));
   if (rid) return renderReview(rid);
   if (qs.get('view') === 'orders') return renderOrders();
+  const lid = +(qs.get('l') || (START.startsWith('l_') ? START.slice(2) : 0));
+  const lk = lid && lookOf(lid);
+  if (lk) { S.grp = lk.grp || 'w'; return openLook(lid); }
   const pid = +(qs.get('p') || (START.startsWith('p_') ? START.slice(2) : 0));
   const pr = pid && S.products.find(x=>x.id===pid);
   if (pr) { S.grp = catOf(pr.category_id)?.grp || 'w'; openProduct(pid); } else renderShop();
