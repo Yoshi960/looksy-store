@@ -1063,11 +1063,11 @@ function aProducts() {
 function productForm(p) {
   window.scrollTo(0,0);
   const isNew = !p;
-  p = p ? {...p, sizes:[...p.sizes], colors:[...p.colors]} : {title:'', category_id:null, price:'', old_price:'', cost:'', promo:'', sizes:[], colors:[], description:'', in_stock:true, photos:[]};
+  p = p ? {...p, sizes:[...p.sizes], colors:[...p.colors]} : {title:'', category_id:null, price:'', old_price:'', cost:'', promo:'', sizes:[], colors:[], description:'', in_stock:true, photos:[], supplier:''};
   const keep = [...p.photos]; let files = [];
   const stash = () => Object.assign(p, {title:$('#p_title').value, category_id:+$('#p_cat').value||null, price:$('#p_price').value, old_price:$('#p_old').value, cost:$('#p_cost').value,
     sizes:$('#p_sizes').value.split(',').map(s=>s.trim()).filter(Boolean), colors:$('#p_colors').value.split(',').map(s=>s.trim()).filter(Boolean),
-    description:$('#p_desc').value, in_stock:$('#p_stock').checked});
+    description:$('#p_desc').value, in_stock:$('#p_stock').checked, supplier:$('#p_sup').value});
   const draw = () => {
     const pr = +String(p.price).replace(/\D/g,''), co = +String(p.cost||'').replace(/\D/g,'');
     $('#pane').innerHTML = `
@@ -1091,6 +1091,7 @@ function productForm(p) {
       <div class="field"><label for="p_sizes">Размеры через запятую</label><input id="p_sizes" placeholder="42, 44, 46, 48" value="${esc(p.sizes.join(', '))}"></div>
       <div class="field"><label for="p_colors">Цвета через запятую</label><input id="p_colors" placeholder="чёрный, коричневый" value="${esc(p.colors.join(', '))}"></div>
       <div class="field"><label for="p_desc">Описание</label><textarea id="p_desc">${esc(p.description)}</textarea></div>
+      <div class="field"><label for="p_sup">Где заказывать <i>видно только вам</i></label><textarea id="p_sup" style="min-height:64px" placeholder="allall · продавец, павильон или ссылка на товар">${esc(p.supplier||'')}</textarea></div>
       <label class="check"><input type="checkbox" id="p_stock" ${p.in_stock?'checked':''}> В наличии</label>
       <button class="btn" id="save">Сохранить</button>
       ${isNew?'':'<div style="height:10px"></div><button class="btn danger" id="del">Удалить товар</button>'}`;
@@ -1166,7 +1167,7 @@ function productForm(p) {
     fd.append('title', p.title); fd.append('category_id', p.category_id||''); fd.append('price', p.price);
     fd.append('old_price', p.old_price||''); fd.append('cost', p.cost||''); fd.append('promo', p.promo||'');
     fd.append('sizes', p.sizes.join(', ')); fd.append('colors', p.colors.join(', '));
-    fd.append('description', p.description); fd.append('in_stock', p.in_stock?'1':'0'); fd.append('keep_photos', JSON.stringify(keep));
+    fd.append('description', p.description); fd.append('in_stock', p.in_stock?'1':'0'); fd.append('supplier', p.supplier||''); fd.append('keep_photos', JSON.stringify(keep));
     $('#save').disabled = true; $('#save').textContent = 'Загружаем фото…';
     for (const f of files) { const x = await shrink(f); fd.append('photos', x, x.name); }
     $('#save').disabled = true; $('#save').textContent = 'Сохраняем…';
@@ -1295,7 +1296,7 @@ async function aOrders() {
   $('#pane').innerHTML = orders.length ? orders.map(o=>`<div class="ord">
       <div class="h"><b>#${o.id} · ${rub(o.price)}</b>
         <select data-o="${o.id}" class="st ${o.status}" aria-label="Статус заказа">${Object.entries(ST).map(([k,t])=>`<option value="${k}" ${o.status===k?'selected':''}>${t}</option>`).join('')}</select></div>
-      <div class="oitems">${items(o).map(i=>`<span>• ${esc(i.title)}${i.qty>1?` × ${i.qty}`:''} <span class="muted">${[i.color, i.size&&'р. '+i.size].filter(Boolean).map(esc).join(' · ')} · ${rub(i.price*(i.qty||1))}</span></span>`).join('')}</div>
+      <div class="oitems">${items(o).map(i=>{ const sp=S.products.find(x=>x.id===i.product_id)?.supplier; return `<span>• ${esc(i.title)}${i.qty>1?` × ${i.qty}`:''} <span class="muted">${[i.color, i.size&&'р. '+i.size].filter(Boolean).map(esc).join(' · ')} · ${rub(i.price*(i.qty||1))}</span>${sp?`<span class="muted" style="display:block;font-size:12px">📦 ${/^https?:/.test(sp)?`<a href="${esc(sp)}" data-link="${esc(sp)}">${esc(sp)}</a>`:esc(sp)}</span>`:''}</span>`; }).join('')}</div>
       ${o.cost!=null?`<div class="muted">Маржа: <span class="good">${rub(o.price-o.cost)}</span></div>`:''}
       <div>${esc(o.name)} · ${who(o)}</div>
       ${o.delivery?`<div><span class="mtag" style="margin:0">${esc(CARRIER[o.delivery]||o.delivery)}${o.delivery==='yandex'?' · сегодня':''}</span></div>`:''}
