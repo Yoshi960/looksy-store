@@ -537,8 +537,8 @@ const miniRate = p => p.rating ? `<div class="mrate">${STAR}${p.rating.avg} · $
 // ---------------------------------------------------------------- витрина
 const catOf = id => S.cats.find(c=>c.id===id);
 const hasItems = c => S.products.some(p=>p.category_id===c.id);
-const grpCats = () => S.cats.filter(c=>c.grp===S.grp && hasItems(c));
-const inGrp = p => (catOf(p.category_id)?.grp || 'w') === S.grp;
+const grpCats = () => S.cats.filter(c=>(c.grp===S.grp && hasItems(c)) || (c.grp!==S.grp && S.products.some(p=>p.category_id===c.id && p.unisex)));
+const inGrp = p => p.unisex || (catOf(p.category_id)?.grp || 'w') === S.grp;
 const coverOf = cid => S.products.find(p=>p.category_id===cid && p.photos[0])?.photos[0];
 const filtersOn = () => (S.f.sizes.length?1:0)+(S.f.max?1:0)+(S.f.stock?1:0)+(S.f.sort!=='rec'?1:0);
 const rank = p => (p.in_stock ? 0 : 10) + (RANK[p.promo] ?? 5);
@@ -1079,7 +1079,7 @@ function productForm(p) {
   const keep = [...p.photos]; let files = [];
   const stash = () => Object.assign(p, {title:$('#p_title').value, category_id:+$('#p_cat').value||null, price:$('#p_price').value, old_price:$('#p_old').value, cost:$('#p_cost').value,
     sizes:$('#p_sizes').value.split(',').map(s=>s.trim()).filter(Boolean), colors:$('#p_colors').value.split(',').map(s=>s.trim()).filter(Boolean),
-    description:$('#p_desc').value, in_stock:$('#p_stock').checked, supplier:$('#p_sup').value});
+    description:$('#p_desc').value, in_stock:$('#p_stock').checked, supplier:$('#p_sup').value, unisex:$('#p_uni').checked});
   const draw = () => {
     const pr = +String(p.price).replace(/\D/g,''), co = +String(p.cost||'').replace(/\D/g,'');
     $('#pane').innerHTML = `
@@ -1104,6 +1104,7 @@ function productForm(p) {
       <div class="field"><label for="p_colors">Цвета через запятую</label><input id="p_colors" placeholder="чёрный, коричневый" value="${esc(p.colors.join(', '))}"></div>
       <div class="field"><label for="p_desc">Описание</label><textarea id="p_desc">${esc(p.description)}</textarea></div>
       <div class="field"><label for="p_sup">Где заказывать <i>видно только вам</i></label><textarea id="p_sup" style="min-height:64px" placeholder="allall · продавец, павильон или ссылка на товар">${esc(p.supplier||'')}</textarea></div>
+      <label class="check"><input type="checkbox" id="p_uni" ${p.unisex?'checked':''}> Унисекс — показывать и в «Женщинам», и в «Мужчинам»</label>
       <label class="check"><input type="checkbox" id="p_stock" ${p.in_stock?'checked':''}> В наличии</label>
       <button class="btn" id="save">Сохранить</button>
       ${isNew?'':'<div style="height:10px"></div><button class="btn danger" id="del">Удалить товар</button>'}`;
@@ -1179,7 +1180,7 @@ function productForm(p) {
     fd.append('title', p.title); fd.append('category_id', p.category_id||''); fd.append('price', p.price);
     fd.append('old_price', p.old_price||''); fd.append('cost', p.cost||''); fd.append('promo', p.promo||'');
     fd.append('sizes', p.sizes.join(', ')); fd.append('colors', p.colors.join(', '));
-    fd.append('description', p.description); fd.append('in_stock', p.in_stock?'1':'0'); fd.append('supplier', p.supplier||''); fd.append('keep_photos', JSON.stringify(keep));
+    fd.append('description', p.description); fd.append('in_stock', p.in_stock?'1':'0'); fd.append('supplier', p.supplier||''); fd.append('unisex', p.unisex?'1':'0'); fd.append('keep_photos', JSON.stringify(keep));
     $('#save').disabled = true; $('#save').textContent = 'Загружаем фото…';
     for (const f of files) { const x = await shrink(f); fd.append('photos', x, x.name); }
     $('#save').disabled = true; $('#save').textContent = 'Сохраняем…';

@@ -373,7 +373,7 @@ async function handle(req: Request): Promise<Response> {
       category_id: intOrNull(formStr(f, "category_id")), title: formStr(f, "title"), description: formStr(f, "description"), price,
       old_price: intOrNull(formStr(f, "old_price")), cost: intOrNull(formStr(f, "cost")),
       promo: PROMO.has(formStr(f, "promo")) ? formStr(f, "promo") : "", sizes: formStr(f, "sizes"), colors: formStr(f, "colors"),
-      photos, in_stock: formStr(f, "in_stock") !== "0", supplier: formStr(f, "supplier").slice(0, 500),
+      photos, in_stock: formStr(f, "in_stock") !== "0", supplier: formStr(f, "supplier").slice(0, 500), unisex: formStr(f, "unisex") === "1",
     }).select("id").single()) as { id: number };
     return json({ ok: true, id: r.id });
   }
@@ -401,7 +401,7 @@ async function handle(req: Request): Promise<Response> {
         category_id: intOrNull(formStr(f, "category_id")), title, description: formStr(f, "description"), price,
         old_price: intOrNull(formStr(f, "old_price")), cost: intOrNull(formStr(f, "cost")),
         promo: PROMO.has(formStr(f, "promo")) ? formStr(f, "promo") : "", sizes: formStr(f, "sizes"), colors: formStr(f, "colors"),
-        photos: [...keep, ...added], in_stock: inStock, supplier: formStr(f, "supplier").slice(0, 500),
+        photos: [...keep, ...added], in_stock: inStock, supplier: formStr(f, "supplier").slice(0, 500), unisex: formStr(f, "unisex") === "1",
       }).eq("id", pid));
       // уведомления из избранного
       let msg = "";
