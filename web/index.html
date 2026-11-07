@@ -434,8 +434,16 @@ let armed=null;
 function confirmTap(key, text){ if(armed===key){armed=null;return true;} armed=key; toast(text+' Нажмите ещё раз для подтверждения'); setTimeout(()=>{ if(armed===key) armed=null; },3000); return false; }
 function setBack(fn){ try{ tg?.BackButton?.offClick?.(window.__bk); if(fn){ window.__bk=fn; tg?.BackButton?.onClick(fn); tg?.BackButton?.show(); } else tg?.BackButton?.hide(); }catch(e){} }
 
+// Поддержка: бот присылает подсказку в чат, мини-апп сворачивается — покупатель пишет вопрос прямо боту
+async function openSupport() {
+  haptic();
+  if (!tg?.initData || !S.bot) return toast('Напишите нам в Telegram-бота — менеджер ответит там');
+  try { await api('/api/support', {method:'POST'}); } catch(e) {}
+  try { tg.openTelegramLink(`https://t.me/${S.bot}`); } catch(e) {}
+  setTimeout(() => { try { tg.close(); } catch(e) {} }, 300);
+}
 async function load() {
-  const [me, cat] = await Promise.all([api('/api/me'), api('/api/catalog')]);
+  const [me, cat] = await Promise.all([api('/api/me?src='+encodeURIComponent(SOURCE)), api('/api/catalog')]);
   S.shop = me.shop; S.bot = me.bot || ''; S.admin = me.is_admin; S.ai = !!me.ai;
   S.cats = cat.categories.map(c=>({...c, grp:c.grp||'w'})); S.products = cat.products; S.looks = (cat.looks||[]).map(l=>({...l, items:(l.items||[]).map(Number)}));
   try { S.favs = new Set(await api('/api/favs')); } catch(e) {}
@@ -562,6 +570,7 @@ function renderShop() {
   $('#app').innerHTML = `
     <div class="top">${LOGO}
       ${S.admin?`<button class="iconbtn" id="b_admin" aria-label="Админка">${I.gear}</button>`:''}
+      <button class="iconbtn" id="b_help" aria-label="Поддержка">${I.chat}</button>
       <button class="iconbtn" id="b_search" aria-label="Поиск">${I.search}</button></div>
     ${S.searching ? `<div class="search">${I.search}<input id="q" placeholder="Шуба, дублёнка, тренч…" value="${esc(S.q)}" autocomplete="off" aria-label="Поиск по товарам"><button class="iconbtn" style="width:34px;height:34px;border:0;background:none" id="q_x" aria-label="Закрыть поиск">${I.x}</button></div>` : ''}
     ${S.q ? '' : `<div class="seg">${GROUPS.map(([k,t])=>`<button data-g="${k}" class="${S.grp===k?'on':''}">${t}</button>`).join('')}</div>
@@ -580,6 +589,7 @@ function renderShop() {
     ${l.length ? `<div class="grid">${l.map(card).join('')}</div>`
       : `<div class="empty"><b>Ничего не нашли</b>${fo||S.q?'Попробуйте убрать фильтры или изменить запрос':'Скоро здесь появятся новинки'}</div>`}
     ${nav('shop')}`;
+  $('#b_help').onclick = openSupport;
   $('#b_search').onclick = () => { S.searching = true; renderShop(); setTimeout(()=>$('#q')?.focus(),50); };
   if ($('#q')) { $('#q').oninput = e => { S.q = e.target.value.trim(); const pos=e.target.selectionStart; renderShop(); const q=$('#q'); q.focus(); q.setSelectionRange(pos,pos); }; $('#q_x').onclick = closeSearch; }
   $$('[data-g]').forEach(b => b.onclick = () => { S.grp=b.dataset.g; S.cat=null; haptic(); renderShop(); });
@@ -1024,6 +1034,7 @@ async function renderOrders() {
           : (o.status==='paid' ? `<span class="muted">${o.delivery==='yandex'?'Курьер Яндекс Доставки привезёт заказ сегодня — менеджер согласует время.':'Трек-номер появится здесь сразу после отправки — пришлём его и в Telegram.'}</span>` : '')}
         ${o.delivery&&!o.track?`<span class="muted">Доставка: ${CARRIER[o.delivery]||'—'}</span>`:''}
         ${['sent','arrived','done'].includes(o.status) && left.length ? `<button class="btn ghost" data-rev="${o.id}">${STAR} Оставить отзыв</button>` : ''}
+        <button class="textbtn" data-help>${I.chat}Вопрос по заказу</button>
       </div>`; }).join('')
     : `<div class="empty"><b>Заказов пока нет</b>Здесь будет статус каждого заказа и трек-номер для отслеживания.</div><button class="btn ghost" id="tocat">Перейти в каталог</button>`}
     ${nav('orders')}`;
@@ -1033,6 +1044,7 @@ async function renderOrders() {
   $$('[data-copy]').forEach(b => b.onclick = () => navigator.clipboard?.writeText(b.dataset.copy).then(()=>toast('Трек-номер скопирован'), ()=>toast(b.dataset.copy)));
   $$('[data-link]').forEach(a => a.onclick = e => { e.preventDefault(); openLink(a.dataset.link); });
   $$('[data-rev]').forEach(b => b.onclick = () => renderReview(+b.dataset.rev));
+  $$('[data-help]').forEach(b => b.onclick = openSupport);
 }
 
 // ---------------------------------------------------------------- админка

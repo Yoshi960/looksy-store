@@ -203,7 +203,14 @@ async function handle(req: Request): Promise<Response> {
   const admin = isAdmin(user);
   let mm: RegExpMatchArray | null;
 
+  if (path === "/api/support" && m === "POST") {
+    const u2 = requireUser(user);
+    await seenUser(u2 as TgFrom, "support");
+    await tg("sendMessage", { chat_id: u2.id, parse_mode: "HTML", text: SUPPORT_HINT });
+    return json({ ok: true });
+  }
   if (path === "/api/me" && m === "GET") {
+    if (user) await seenUser(user as TgFrom, String(url.searchParams.get("src") || "mini-app"));
     if (!BOT_USERNAME && BOT_TOKEN) {
       try { BOT_USERNAME = (await tg("getMe", {})).result?.username ?? ""; } catch { /* имя бота не критично */ }
     }
@@ -621,16 +628,86 @@ async function notifyAdmins(o: Record<string, unknown>) {
   for (const aid of ADMIN_IDS) await send(aid, text);
 }
 
-async function onUpdate(u: { message?: { text?: string; chat: { id: number }; from?: { id: number } } }) {
+type TgFrom = { id: number; first_name?: string; last_name?: string; username?: string };
+const whoHtml = (f: TgFrom) => `${escHtml([f.first_name, f.last_name].filter(Boolean).join(" ") || "Без имени")}` +
+  (f.username ? ` @${escHtml(f.username)}` : "") + ` · <a href="tg://user?id=${f.id}">профиль</a>`;
+
+// Новый пользователь: запоминаем и сообщаем админам (у кого уведомления включены)
+async function seenUser(f: TgFrom | null | undefined, source: string) {
+  if (!f?.id || ADMIN_IDS.has(f.id)) return;
+  const ex = must(await db.from("bot_users").select("id").eq("id", f.id).maybeSingle());
+  if (ex) return;
+  const { error } = await db.from("bot_users").insert({ id: f.id, first_name: [f.first_name, f.last_name].filter(Boolean).join(" ").slice(0, 80), username: f.username ?? null, source: source.slice(0, 40) });
+  if (error) return; // параллельная вставка — уже записан
+  const muted = new Set((must(await db.from("admin_prefs").select("admin_id").eq("new_users", false)) as Array<{ admin_id: number }>).map((r) => Number(r.admin_id)));
+  const total = (await db.from("bot_users").select("id", { count: "exact", head: true })).count ?? 0;
+  for (const aid of ADMIN_IDS) if (!muted.has(aid))
+    await send(aid, `👤 <b>Новый пользователь</b>
+${whoHtml(f)}
+Источник: ${escHtml(source)}
+Всего в боте: ${total}
+
+<i>Выключить такие уведомления: /newusers_off</i>`);
+}
+
+const SUPPORT_HINT = "💬 <b>Поддержка LOOKSY STORE</b>\n\nНапишите вопрос прямо сюда, в этот чат — можно приложить фото или скриншот. Менеджер ответит здесь же.";
+
+type TgMsg = { message_id: number; text?: string; caption?: string; chat: { id: number; type?: string }; from?: TgFrom; reply_to_message?: { message_id: number } };
+async function onUpdate(u: { message?: TgMsg }) {
   const msg = u.message;
-  if (!msg?.text) return;
+  if (!msg || msg.chat.type && msg.chat.type !== "private") return;
   const chat = msg.chat.id;
+  const isAdm = ADMIN_IDS.has(msg.from?.id ?? 0);
+
+  // ответ админа на сообщение покупателя → пересылаем покупателю
+  if (isAdm && msg.reply_to_message) {
+    const m = must(await db.from("support_map").select("user_id").eq("admin_chat", chat).eq("admin_msg", msg.reply_to_message.message_id).maybeSingle()) as { user_id: number } | null;
+    if (m) {
+      const r = await tg("copyMessage", { chat_id: m.user_id, from_chat_id: chat, message_id: msg.message_id });
+      await tg("sendMessage", { chat_id: chat, text: r.ok ? "✅ Отправлено покупателю" : "⚠️ Не доставлено — возможно, покупатель заблокировал бота", reply_to_message_id: msg.message_id });
+      return;
+    }
+  }
+  if (!msg.text || !msg.text.startsWith("/")) {
+    if (isAdm) {
+      if (msg.text) await tg("sendMessage", { chat_id: chat, text: "Чтобы ответить покупателю, нажмите «Ответить» на его сообщение здесь в боте." });
+      return;
+    }
+    // сообщение покупателя → всем админам
+    const f = msg.from!;
+    await seenUser(f, "support");
+    let ok = 0;
+    for (const aid of ADMIN_IDS) {
+      const h = await tg("sendMessage", { chat_id: aid, parse_mode: "HTML", text: `💬 <b>Вопрос в поддержку</b>\n${whoHtml(f)}\n\n<i>Ответьте на это или следующее сообщение — ответ уйдёт покупателю.</i>` });
+      const c = await tg("copyMessage", { chat_id: aid, from_chat_id: chat, message_id: msg.message_id });
+      const rows = [h?.result?.message_id, c?.result?.message_id].filter(Boolean).map((mid: number) => ({ admin_chat: aid, admin_msg: mid, user_id: f.id }));
+      if (rows.length) { await db.from("support_map").insert(rows); ok++; }
+    }
+    // подтверждаем покупателю не чаще раза в 10 минут
+    const recent = must(await db.from("events").select("id").eq("type", "support_ack").eq("user_id", f.id).gte("created_at", now() - 600).limit(1)) as unknown[];
+    if (ok && !recent.length) {
+      await db.from("events").insert({ type: "support_ack", user_id: f.id, source: "support" });
+      await tg("sendMessage", { chat_id: chat, text: "Спасибо! Передали менеджеру — ответим здесь, в этом чате, как можно скорее 🙌" });
+    }
+    return;
+  }
   const [cmd, arg = ""] = msg.text.trim().split(/\s+/, 2);
+  if (cmd === "/support" || cmd === "/help") {
+    await tg("sendMessage", { chat_id: chat, parse_mode: "HTML", text: SUPPORT_HINT });
+    return;
+  }
+  if ((cmd === "/newusers_off" || cmd === "/newusers_on") && isAdm) {
+    await db.from("admin_prefs").upsert({ admin_id: chat, new_users: cmd === "/newusers_on" });
+    await tg("sendMessage", { chat_id: chat, text: cmd === "/newusers_on" ? "🔔 Уведомления о новых пользователях включены" : "🔕 Уведомления о новых пользователях выключены. Включить: /newusers_on" });
+    return;
+  }
   if (cmd === "/id") {
     await tg("sendMessage", { chat_id: chat, text: `Твой Telegram ID: <code>${msg.from?.id}</code>`, parse_mode: "HTML" });
   } else if (cmd === "/admin" && ADMIN_IDS.has(msg.from?.id ?? 0)) {
     await tg("sendMessage", { chat_id: chat, text: "Админка открывается в мини-аппе — значок настроек в шапке.", reply_markup: appButton("⚙️ Открыть", "src=admin") });
   } else if (cmd === "/start") {
+    await seenUser(msg.from, (arg || "bot").slice(0, 40));
+    if (arg === "support") { await tg("sendMessage", { chat_id: chat, parse_mode: "HTML", text: SUPPORT_HINT }); return; }
     if (/^p_\d+$/.test(arg)) {
       const p = must(await db.from("products").select("id,title,price").eq("id", Number(arg.slice(2))).maybeSingle()) as { id: number; title: string; price: number } | null;
       if (p) {
