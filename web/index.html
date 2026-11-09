@@ -344,6 +344,44 @@ h2.sec2{font:800 16px var(--display);margin:22px 0 10px}
 .orow select,.orow input{border:1px solid var(--line);border-radius:12px;padding:10px 8px;background:var(--bg);color:var(--text);min-width:0;font-variant-numeric:tabular-nums}
 .orow select{max-width:118px}
 .oitems{display:flex;flex-direction:column;gap:2px;font-size:14px}
+/* «Добавьте к заказу» */
+.ups{display:flex;flex-direction:column;gap:8px}
+.upr{display:flex;align-items:center;gap:12px;background:var(--surface);border-radius:16px;padding:8px 12px 8px 8px}
+.upr img,.upr i{width:56px;height:72px;border-radius:10px;object-fit:cover;background:var(--surface2);flex:none;cursor:pointer}
+.upr .g{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.upr .g b{font-size:14px;font-weight:700;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+.upr .g span{font:800 14px var(--display);font-variant-numeric:tabular-nums}
+.upr .add{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--text);display:flex;align-items:center;justify-content:center;flex:none}
+.upr .add.done{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+/* просмотр фото с приближением */
+.gal .zoom{position:absolute;right:max(16px,env(safe-area-inset-right,0px));bottom:36px;width:36px;height:36px;border-radius:50%}
+.gal .zoom .ico{width:18px;height:18px}
+.lb{position:fixed;inset:0;z-index:30;background:rgba(10,10,12,.97);color:#fff;animation:fade .2s;touch-action:none;overscroll-behavior:contain}
+.lb .vp{position:absolute;inset:0;overflow:hidden}
+.lb .strip{display:flex;height:100%;transition:transform .3s cubic-bezier(.2,.8,.2,1);will-change:transform}
+.lb .strip.drag{transition:none}
+.lb .sl{flex:none;width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.lb .sl img{max-width:100%;max-height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;pointer-events:none;transform-origin:50% 50%}
+.lb .sl img.anim{transition:transform .25s ease-out}
+.lb .x{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));width:42px;height:42px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.lb .n{text-shadow:0 1px 4px rgba(0,0,0,.6);position:absolute;top:calc(22px + env(safe-area-inset-top,0px));left:0;right:0;text-align:center;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;pointer-events:none}
+.lb .ft{position:absolute;left:0;right:0;bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:none}
+.lb .dots{display:flex;gap:6px}
+.lb .dots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.4);transition:width .2s}
+.lb .dots i.on{width:18px;border-radius:3px;background:#fff}
+.lb .hint{font-size:12px;color:rgba(255,255,255,.85);text-shadow:0 1px 4px rgba(0,0,0,.7);transition:opacity .3s}
+.lb .arr{display:none;position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;align-items:center;justify-content:center}
+.lb .arr.l{left:16px}.lb .arr.r{right:16px}.lb .arr.r .ico{transform:scaleX(-1)}
+@media (hover:hover) and (pointer:fine){.lb .arr{display:flex}}
+/* согласие и документы */
+.agree{display:flex;gap:12px;align-items:flex-start;font-size:13px;line-height:1.45;color:var(--text2);margin:6px 0 14px;cursor:pointer}
+.agree input{width:22px;height:22px;margin:0;flex:none;accent-color:var(--accent)}
+.agree a,.doclinks a{color:var(--text);text-decoration:underline;text-underline-offset:2px}
+.agree.err{color:var(--sale)}
+.doc{font-size:14px;line-height:1.55;color:var(--text2)}
+.doc h4{font:800 14px var(--body);color:var(--text);margin:16px 0 6px}
+.doc p,.doc ul{margin:0 0 8px}.doc ul{padding-left:18px}
+.doclinks{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;font-size:12px;color:var(--hint);margin:22px 0 0}
 .admin-fab{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:9;background:var(--text);color:var(--bg);border:0;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.18)}
 </style>
 </head>
@@ -401,6 +439,7 @@ const I = {
   box:'<svg class="ico" viewBox="0 0 24 24"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg>',
   copy:'<svg class="ico" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
   shield:'<svg class="ico" viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4.4 3 7.8 7 9 4-1.2 7-4.6 7-9V6z"/><path d="m9 12 2 2 4-4"/></svg>',
+  zoom:'<svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M11 8v6M8 11h6"/></svg>',
 };
 const STAR = '<svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>';
 const FIT = {small:'Маломерит', ok:'В размер', big:'Большемерит'};
@@ -497,6 +536,62 @@ const linePrice = i => { const p = cartLine(i); return i.look && lookFull(i.look
 function lcard(l, sm='') { const pr = lookPrice(l), n = lookItems(l).length;
   return `<button class="lcard ${sm}" data-look="${l.id}">${lookCover(l)?`<img loading="lazy" src="${img(lookCover(l))}" alt="">`:''}${l.discount&&pr.full?`<span class="disc">−${l.discount}%</span>`:''}
     <div class="ov"><small>Образ · ${plural(n,'вещь','вещи','вещей')}</small><b>${rub(pr.final)}${pr.final<pr.sum?`<s>${rub(pr.sum)}</s>`:''}</b>${sm?'':`<span>${esc(l.title)}</span>`}</div></button>`; }
+// ---------- «С этим носят» и «Добавьте к заказу»
+// Тип вещи берём из названия категории (если не понятно — из названия товара).
+// К вещам предлагаем то, чего в образе ещё нет: к джемперу — джинсы, куртку, обувь.
+const SLOTS = [['outer',/шуб|дубл[её]н|куртк|пальто|тренч|пуховик|парк[аи]|бомбер|жилет|косух|плащ|ветровк|анорак|верхн/i],
+  ['suit',/костюм|комплект/i],
+  ['top',/свитер|джемпер|водолаз|кофт|рубаш|футбол|худи|свитш|кардиган|лонгслив|топ|блуз|поло|олимпийк|зип/i],
+  ['bottom',/джинс|брюк|юбк|шорт|штан|карго|чинос|леггинс/i],
+  ['shoes',/обув|ботин|кроссов|кед|сапог|туфл|лофер|челси|дерби|угг/i],
+  ['acc',/шапк|шарф|сумк|рюкзак|ремн|ремен|перчат|аксесс|кепк|берет|балаклав|платок|очки|снуд/i]];
+function slotOf(p) {
+  const cn = catOf(p.category_id)?.name || '';
+  for (const [k, rx] of SLOTS) if (rx.test(cn)) return k;
+  for (const [k, rx] of SLOTS) if (rx.test(p.title)) return k;
+  return 'other';
+}
+const grpOf = p => p.unisex ? null : (catOf(p.category_id)?.grp || 'w');
+function complements(base, n=4, exclude=[]) {
+  if (!base.length) return [];
+  const have = new Set(base.map(slotOf));
+  if (have.has('suit')) { have.add('top'); have.add('bottom'); }
+  if (have.has('top') && have.has('bottom')) have.add('suit');
+  const grps = new Set(base.map(grpOf).filter(Boolean));
+  const ids = new Set([...base.map(p => p.id), ...exclude]);
+  const lookMates = new Set(S.looks.filter(l => l.active !== false && base.some(p => l.items.includes(p.id))).flatMap(l => l.items));
+  const score = p => (lookMates.has(p.id) ? 100 : 0) + ({hit:20, margin:15, fast:10}[p.promo] || 0) + (p.rating?.avg || 0) * 2 + (p.photos.length ? 5 : 0);
+  const pool = S.products.filter(p => p.in_stock && !ids.has(p.id) && (!grps.size || !grpOf(p) || grps.has(grpOf(p))));
+  const best = new Map();
+  for (const p of pool) { const k = slotOf(p); if (k === 'other' || have.has(k)) continue;
+    const list = best.get(k) || []; list.push(p); best.set(k, list); }
+  // по одной лучшей вещи каждого недостающего типа, потом — вторые по рейтингу
+  const lists = [...best.values()].map(l => l.sort((a, b) => score(b) - score(a)));
+  const out = [];
+  for (let r = 0; out.length < n && lists.some(l => l[r]); r++)
+    out.push(...lists.map(l => l[r]).filter(Boolean).sort((a, b) => score(b) - score(a)));
+  return out.slice(0, n);
+}
+// добавить вещь из подсказки: если нужно выбрать размер или цвет — спросим в нижнем листе
+function quickAdd(p, done) {
+  const needC = p.colors.length > 1, needS = p.sizes.length > 1;
+  const put = sel => { cartAdd(p, sel); track('order_click', p.id); try{ tg?.HapticFeedback?.notificationOccurred?.('success'); }catch(e){} toast(`Добавили: ${p.title}`); done?.(); };
+  if (!needC && !needS) return put({color: p.colors[0] || '', size: p.sizes[0] || ''});
+  const sel = {};
+  const draw = () => sheet(`<h3>${esc(p.title)}</h3>
+    <div class="mini" style="margin-bottom:6px">${p.photos[0]?`<img src="${img(p.photos[0])}" alt="">`:''}<div class="g"><b>${rub(p.price)}</b></div></div>
+    ${needC?`<div class="sec">Цвет</div><div class="opts">${p.colors.map(c=>`<button class="opt ${sel.color===c?'on':''}" data-qk="color" data-qv="${esc(c)}">${esc(c)}</button>`).join('')}</div>`:''}
+    ${needS?`<div class="sec">Размер</div><div class="opts">${p.sizes.map(s=>`<button class="opt ${sel.size===s?'on':''}" data-qk="size" data-qv="${esc(s)}">${esc(s)}</button>`).join('')}</div>`:''}
+    <div style="height:18px"></div><button class="btn" id="qa_ok">${I.bag}Добавить в заказ</button>`, () => {
+      $$('[data-qk]').forEach(b => b.onclick = () => { sel[b.dataset.qk] = b.dataset.qv; haptic(); draw(); });
+      $('#qa_ok').onclick = () => {
+        if (needC && !sel.color) return toast('Выберите цвет');
+        if (needS && !sel.size) return toast('Выберите размер');
+        closeSheet(); put({color: sel.color ?? p.colors[0] ?? '', size: sel.size ?? p.sizes[0] ?? ''});
+      };
+    });
+  draw();
+}
 const bindLooks = (root=document, from) => root.querySelectorAll('[data-look]').forEach(b => b.onclick = () => openLook(+b.dataset.look, {from}));
 
 // ---------- нижнее меню
@@ -683,11 +778,13 @@ function openProduct(id, sel={}) {
   S.view = 'product'; const back = sel.from || renderShop; setBack(back);
   const ph = p.photos.length ? p.photos : [''];
   const inLooks = S.looks.filter(l => l.active !== false && l.items.includes(p.id) && lookItems(l).length > 1);
-  const similar = S.products.filter(x => x.id!==p.id && x.in_stock && (x.category_id===p.category_id || (catOf(x.category_id)?.grp===catOf(p.category_id)?.grp))).sort((a,b)=>(b.category_id===p.category_id)-(a.category_id===p.category_id)).slice(0,6);
+  const withIt = complements([p], 6);
+  const similar = S.products.filter(x => x.id!==p.id && x.in_stock && !withIt.includes(x) && (x.category_id===p.category_id || (catOf(x.category_id)?.grp===catOf(p.category_id)?.grp))).sort((a,b)=>(b.category_id===p.category_id)-(a.category_id===p.category_id)).slice(0,6);
   $('#app').innerHTML = `
     <div class="gal"><div class="track" id="trk">${ph.map(f=>`<img src="${img(f)}" alt="">`).join('')}</div>
       ${ph.length>1?`<div class="count" id="cnt">1 / ${ph.length}</div><div class="dots" id="dots">${ph.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>`:''}
       ${tg?'':`<button class="iconbtn tl" id="bk" aria-label="Назад">${I.back}</button>`}
+      ${p.photos.length?`<button class="iconbtn zoom" id="zm" aria-label="Открыть фото на весь экран">${I.zoom}</button>`:''}
       <div class="tr" style="display:flex;gap:8px"><button class="iconbtn" id="shr" aria-label="Поделиться">${I.share}</button>${heartBtn(p.id,'iconbtn')}</div></div>
     <div class="info">
       ${tags(p)?`<div class="badges">${tags(p)}</div>`:''}
@@ -702,6 +799,7 @@ function openProduct(id, sel={}) {
         <div class="perk">${I.shield}<b>Новая</b>вещь с биркой</div>
       </div>
       ${inLooks.length?`<div class="lbl">Входит в образ</div><div class="similar">${inLooks.map(l=>lcard(l,'sm')).join('')}</div>`:''}
+      ${withIt.length?`<div class="lbl">С этим носят</div><div class="similar">${withIt.map(card).join('')}</div>`:''}
       <div id="revs"></div>
       ${similar.length?`<div class="lbl">Похожие</div><div class="similar">${similar.map(card).join('')}</div>`:''}
     </div>
@@ -711,7 +809,8 @@ function openProduct(id, sel={}) {
   $('#bk') && ($('#bk').onclick = back);
   $('#shr').onclick = () => share(p);
   $('#szh') && ($('#szh').onclick = sizeSheet);
-  gallery($('#trk'), ph.length, sel.ph||0, i => sel.ph = i);
+  const gl = gallery($('#trk'), ph.length, sel.ph||0, i => sel.ph = i, p.photos.length ? i => viewer(p.photos, i, j => { gl.go(j, false); setBack(back); }) : null);
+  $('#zm') && ($('#zm').onclick = () => viewer(p.photos, sel.ph||0, j => { gl.go(j, false); setBack(back); }));
   bindLooks($('#app'), () => openProduct(id, sel));
   $$('.opt[data-k]').forEach(b => b.onclick = () => { sel[b.dataset.k] = b.dataset.v; haptic(); const y=scrollY; openProduct(id, sel); scrollTo(0,y); });
   bindCards($('#app'));
@@ -733,8 +832,8 @@ const inCart = (p, sel) => S.cart.some(i => i.pid === p.id && (!p.sizes.length |
 // лента после первого свайпа уезжает влево, и касания по 2-му фото до неё не доходили — это и был баг.
 // Жест забираем себе (preventDefault), чтобы Telegram и браузер
 // не перехватывали его на полпути; прерванный жест (touchcancel) возвращает фото на место.
-function gallery(trk, n, start=0, onChange) {
-  if (!trk) return;
+function gallery(trk, n, start=0, onChange, onTap) {
+  if (!trk) return {go(){}};
   const box = trk.parentElement;
   let idx = 0, x0 = 0, y0 = 0, dx = 0, t0 = 0, dir = null, active = false, swiped = false, tid = null;
   const go = (i, anim=true) => {
@@ -747,7 +846,12 @@ function gallery(trk, n, start=0, onChange) {
     onChange?.(idx);
   };
   go(start, false);
-  if (n < 2) return;
+  const api = {go};
+  // тап по фото открывает просмотр с приближением (если он есть), иначе — листает половинками
+  if (n < 2) {
+    if (onTap) trk.parentElement.addEventListener('click', e => { if (!e.target.closest('button')) onTap(idx); });
+    return api;
+  }
   const finish = ok => {
     if (!active) return;
     active = false; trk.classList.remove('drag');
@@ -784,9 +888,115 @@ function gallery(trk, n, start=0, onChange) {
   box.addEventListener('click', e => {
     if (swiped) { swiped = false; return; }
     if (e.target.closest('button')) return;
+    if (onTap) return onTap(idx);
     const r = trk.getBoundingClientRect();
     go(idx + (e.clientX - r.left > r.width / 2 ? 1 : -1));
   });
+  return api;
+}
+
+// ---------------------------------------------------------------- просмотр фото на весь экран
+// Свайп — листать, два пальца или двойной тап — приблизить, приближенное фото двигается пальцем,
+// свайп вниз или крестик — закрыть. На компьютере: колесо мыши, стрелки и Esc.
+function viewer(photos, start=0, onClose) {
+  photos = photos.filter(Boolean); if (!photos.length) return;
+  const n = photos.length, prevBack = window.__bk;
+  const box = document.createElement('div');
+  box.className = 'lb'; box.setAttribute('role','dialog'); box.setAttribute('aria-label','Просмотр фото');
+  box.innerHTML = `<div class="vp"><div class="strip">${photos.map(f=>`<div class="sl"><img src="${img(f)}" alt="" draggable="false"></div>`).join('')}</div></div>
+    ${n>1?`<div class="n"></div><button class="arr l" aria-label="Предыдущее фото">${I.back}</button><button class="arr r" aria-label="Следующее фото">${I.back}</button>`:''}
+    <button class="x" aria-label="Закрыть">${I.x}</button>
+    <div class="ft">${n>1?`<div class="dots">${photos.map(()=>'<i></i>').join('')}</div>`:''}<div class="hint">${n>1?'Листайте свайпом · ':''}два пальца — приблизить</div></div>`;
+  document.body.append(box);
+  const vp = box.querySelector('.vp'), strip = box.querySelector('.strip'), imgs = [...box.querySelectorAll('.sl img')];
+  let idx = Math.max(0, Math.min(n-1, start)), s = 1, tx = 0, ty = 0;
+  const W = () => vp.clientWidth, H = () => vp.clientHeight;
+  const cur = () => imgs[idx];
+  const apply = (anim=false) => { const im = cur(); im.classList.toggle('anim', anim); im.style.transform = s > 1 ? `translate(${tx}px,${ty}px) scale(${s})` : ''; };
+  const clamp = () => { const im = cur(), mx = Math.max(0, (im.clientWidth*s - W())/2), my = Math.max(0, (im.clientHeight*s - H())/2);
+    tx = Math.max(-mx, Math.min(mx, tx)); ty = Math.max(-my, Math.min(my, ty)); };
+  const reset = (anim=true) => { s = 1; tx = ty = 0; apply(anim); };
+  const show = (i, anim=true) => {
+    if (i !== idx) { reset(false); }
+    idx = Math.max(0, Math.min(n-1, i));
+    strip.classList.toggle('drag', !anim);
+    strip.style.transform = `translateX(${-idx*100}%)`;
+    const nn = box.querySelector('.n'); nn && (nn.textContent = `${idx+1} / ${n}`);
+    box.querySelectorAll('.dots i').forEach((d,k) => d.classList.toggle('on', k===idx));
+  };
+  // приблизить к точке (cx, cy) экрана до масштаба ns
+  const zoomAt = (cx, cy, ns, anim=false) => {
+    const r = vp.getBoundingClientRect(), mx = cx - r.left - W()/2, my = cy - r.top - H()/2;
+    const qx = (mx - tx)/s, qy = (my - ty)/s;
+    s = Math.max(1, Math.min(4, ns)); tx = mx - qx*s; ty = my - qy*s;
+    if (s === 1) tx = ty = 0; clamp(); apply(anim);
+  };
+  const close = () => {
+    document.removeEventListener('keydown', key); box.remove();
+    if (prevBack) setBack(prevBack); else setBack(null);
+    onClose?.(idx);
+  };
+  const key = e => { if (e.key==='Escape') close(); else if (e.key==='ArrowRight') show(idx+1); else if (e.key==='ArrowLeft') show(idx-1); };
+  document.addEventListener('keydown', key);
+  setBack(close);
+  box.querySelector('.x').onclick = close;
+  box.querySelector('.arr.l') && (box.querySelector('.arr.l').onclick = () => show(idx-1));
+  box.querySelector('.arr.r') && (box.querySelector('.arr.r').onclick = () => show(idx+1));
+  show(idx, false);
+  setTimeout(() => { const h = box.querySelector('.hint'); h && (h.style.opacity = 0); }, 3500);
+
+  // жесты
+  let mode = null, x0 = 0, y0 = 0, dx = 0, dy = 0, t0 = 0, d0 = 0, s0 = 1, lastTap = 0, moved = false, pan0 = [0,0];
+  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  const mid = t => [(t[0].clientX + t[1].clientX)/2, (t[0].clientY + t[1].clientY)/2];
+  vp.addEventListener('touchstart', e => {
+    const t = e.touches;
+    if (t.length === 2) { mode = 'pinch'; d0 = dist(t); s0 = s; const m = mid(t); x0 = m[0]; y0 = m[1]; pan0 = [tx, ty]; strip.classList.remove('drag'); show(idx); return; }
+    if (t.length !== 1) return;
+    mode = null; moved = false; x0 = t[0].clientX; y0 = t[0].clientY; dx = dy = 0; t0 = Date.now(); pan0 = [tx, ty];
+  }, {passive:true});
+  vp.addEventListener('touchmove', e => {
+    if (e.cancelable) e.preventDefault();
+    const t = e.touches;
+    if (mode === 'pinch' && t.length === 2) {
+      const m = mid(t), r = vp.getBoundingClientRect();
+      // масштаб относительно исходной середины пальцев + сдвиг вслед за пальцами
+      const ns = Math.max(1, Math.min(4, s0 * dist(t) / d0));
+      const ox = x0 - r.left - W()/2, oy = y0 - r.top - H()/2;
+      const qx = (ox - pan0[0])/s0, qy = (oy - pan0[1])/s0;
+      s = ns; tx = ox - qx*s + (m[0] - x0); ty = oy - qy*s + (m[1] - y0);
+      clamp(); apply(); moved = true; return;
+    }
+    if (t.length !== 1 || mode === 'pinch') return;
+    dx = t[0].clientX - x0; dy = t[0].clientY - y0;
+    if (!mode) { if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return; mode = s > 1 ? 'pan' : (Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'); }
+    moved = true;
+    if (mode === 'pan') { tx = pan0[0] + dx; ty = pan0[1] + dy; clamp(); apply(); }
+    else if (mode === 'x') { const edge = (idx===0&&dx>0)||(idx===n-1&&dx<0) ? .3 : 1; strip.classList.add('drag'); strip.style.transform = `translateX(calc(${-idx*100}% + ${dx*edge}px))`; }
+    else if (mode === 'y' && dy > 0) { cur().style.transform = `translateY(${dy}px)`; box.style.background = `rgba(10,10,12,${Math.max(.4, .97 - dy/600)})`; }
+  }, {passive:false});
+  vp.addEventListener('touchend', e => {
+    if (mode === 'pinch') { if (e.touches.length === 0) { mode = null; if (s < 1.05) reset(); } else if (e.touches.length === 1) { mode = 'pan'; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; pan0 = [tx, ty]; } return; }
+    if (e.touches.length) return;
+    if (mode === 'x') { strip.classList.remove('drag'); const fast = Math.abs(dx) > 25 && Date.now()-t0 < 280;
+      if (Math.abs(dx) > W()*.18 || fast) { show(idx + (dx < 0 ? 1 : -1)); haptic(); } else show(idx); }
+    else if (mode === 'y') { if (dy > 110) return close(); cur().style.transform = ''; box.style.background = ''; }
+    if (!moved) { // двойной тап — приблизить / отдалить
+      const now = Date.now();
+      if (now - lastTap < 300) { lastTap = 0; if (s > 1) reset(); else zoomAt(x0, y0, 2.5, true); haptic(); }
+      else lastTap = now;
+    }
+    mode = null;
+  });
+  vp.addEventListener('touchcancel', () => { mode = null; strip.classList.remove('drag'); show(idx); if (s <= 1) { cur().style.transform = ''; box.style.background = ''; } });
+  // компьютер: колесо — приблизить, двойной клик — приблизить/отдалить, перетаскивание приближенного фото
+  vp.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.clientX, e.clientY, s * (e.deltaY < 0 ? 1.15 : 1/1.15)); }, {passive:false});
+  vp.addEventListener('dblclick', e => { if (s > 1) reset(); else zoomAt(e.clientX, e.clientY, 2.5, true); });
+  let md = null;
+  vp.addEventListener('mousedown', e => { if (s > 1) md = [e.clientX, e.clientY, tx, ty]; });
+  addEventListener('mousemove', e => { if (!md || !box.isConnected) return; tx = md[2] + e.clientX - md[0]; ty = md[3] + e.clientY - md[1]; clamp(); apply(); });
+  addEventListener('mouseup', () => md = null);
+  addEventListener('resize', () => { if (box.isConnected) { clamp(); apply(); } });
 }
 
 // ---------------------------------------------------------------- готовый образ
@@ -804,6 +1014,7 @@ function openLook(id, sel={}) {
     <div class="gal"><div class="track" id="trk">${(ph.length?ph:['']).map(f=>`<img src="${img(f)}" alt="">`).join('')}</div>
       ${ph.length>1?`<div class="count" id="cnt">1 / ${ph.length}</div><div class="dots" id="dots">${ph.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>`:''}
       ${tg?'':`<button class="iconbtn tl" id="bk" aria-label="Назад">${I.back}</button>`}
+      ${ph.length?`<button class="iconbtn zoom" id="zm" aria-label="Открыть фото на весь экран">${I.zoom}</button>`:''}
       <div class="tr"><button class="iconbtn" id="shr" aria-label="Поделиться">${I.share}</button></div></div>
     <div class="info">
       <div class="badges"><span class="tag hit">ОБРАЗ</span>${l.discount&&pr.full?`<span class="tag sale">−${l.discount}%</span>`:''}</div>
@@ -829,7 +1040,8 @@ function openLook(id, sel={}) {
     if (tg?.openTelegramLink && S.bot) return tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent('Образ: '+l.title)}`);
     navigator.clipboard?.writeText(link).then(()=>toast('Ссылка на образ скопирована'), ()=>toast(link)); };
   $('#szh').onclick = sizeSheet;
-  gallery($('#trk'), Math.max(1, ph.length), sel.ph||0, i => sel.ph = i);
+  $('#zm') && ($('#zm').onclick = () => viewer(ph, sel.ph||0, j => gl.go(j, false)));
+  const gl = gallery($('#trk'), Math.max(1, ph.length), sel.ph||0, i => sel.ph = i, ph.length ? i => viewer(ph, i, j => gl.go(j, false)) : null);
   $$('[data-open]').forEach(b => b.onclick = () => openProduct(+b.dataset.open, {from: self}));
   $$('.opt[data-p]').forEach(b => b.onclick = () => { sel.ch[+b.dataset.p][b.dataset.k] = b.dataset.v; haptic(); const y=scrollY; self(); scrollTo(0,y); });
   $('#tocart') && ($('#tocart').onclick = renderCart);
@@ -925,6 +1137,7 @@ function renderCart() {
   const total = lines.filter(x => x.p.in_stock).reduce((a, x) => a + linePrice(x) * x.qty, 0);
   const bad = lines.some(x => !x.p.in_stock);
   const partial = [...new Set(lines.filter(x => x.look && !lookFull(x.look) && lookOf(x.look)?.discount).map(x => x.look))];
+  const ups = complements([...new Set(lines.map(x => x.p))], 3);
   $('#app').innerHTML = `<h1 class="page">Корзина</h1>
     ${lines.length ? lines.map(x => `<div class="citem2">
         ${x.p.photos[0]?`<img src="${img(x.p.photos[0])}" alt="" data-open="${x.p.id}">`:'<i></i>'}
@@ -936,6 +1149,10 @@ function renderCart() {
           <div class="row"><span class="pr">${rub(linePrice(x)*x.qty)}${linePrice(x)<x.p.price?` <s class="muted" style="font-size:12px;font-weight:600">${rub(x.p.price*x.qty)}</s>`:''}</span>
             <div class="qty"><button data-q="${x.k}" data-d="-1" aria-label="Меньше">−</button><span>${x.qty}</span><button data-q="${x.k}" data-d="1" aria-label="Больше">+</button></div></div></div></div>`).join('')
       + `<div class="total"><span>Итого · ${plural(lines.filter(x=>x.p.in_stock).reduce((a,x)=>a+x.qty,0),'вещь','вещи','вещей')}</span><b>${rub(total)}</b></div>
+         ${ups.length?`<div class="lbl">Добавьте к заказу <span class="muted" style="font-size:12px">нажмите +, чтобы добавить</span></div>
+           <div class="ups">${ups.map(p=>`<div class="upr">${p.photos[0]?`<img src="${img(p.photos[0])}" alt="" data-open="${p.id}" loading="lazy">`:`<i data-open="${p.id}"></i>`}
+             <div class="g"><b data-open="${p.id}">${esc(p.title)}</b><span>${rub(p.price)}${p.old_price>p.price?`<s class="muted" style="font:600 12px var(--body);margin-left:6px">${rub(p.old_price)}</s>`:''}</span></div>
+             <button class="add" data-up="${p.id}" aria-label="Добавить в заказ: ${esc(p.title)}">${I.plus}</button></div>`).join('')}</div><div style="height:6px"></div>`:''}
          ${partial.map(id=>`<div class="hintbox">${I.check}<span>Соберите образ «${esc(lookOf(id).title)}» целиком — и получите скидку ${lookOf(id).discount}% на все его вещи. <button class="textbtn" data-look="${id}">Открыть образ</button></span></div>`).join('')}
          <p class="muted">Доставка СДЭК, Почтой России, 5Post, а по Москве — Яндекс Доставкой в день заказа. Способ выберете при оформлении. Оплата — после того, как менеджер подтвердит наличие.</p>
          <div style="height:8px"></div><button class="btn" id="checkout" ${bad||!total?'disabled':''}>${bad?'Уберите закончившиеся вещи':'Оформить заказ'}</button>`
@@ -948,6 +1165,7 @@ function renderCart() {
   $$('[data-q]').forEach(b => b.onclick = () => { const it = S.cart[+b.dataset.q]; it.qty = Math.max(1, Math.min(10, it.qty + (+b.dataset.d))); haptic(); cartSave(); renderCart(); });
   $$('[data-rm]').forEach(b => b.onclick = () => { S.cart.splice(+b.dataset.rm, 1); haptic(); cartSave(); renderCart(); });
   $('#checkout') && ($('#checkout').onclick = () => openCheckout());
+  $$('[data-up]').forEach(b => b.onclick = () => { const p = S.products.find(x => x.id === +b.dataset.up); if (p) quickAdd(p, () => { const y = scrollY; renderCart(); scrollTo(0, y); }); });
   bindLooks($('#app'), renderCart);
 }
 
@@ -980,9 +1198,13 @@ function openCheckout(st={}) {
          ${st.delivery?`<div class="field"><label for="f_addr">${st.delivery==='post'?'Адрес или индекс отделения':'Адрес пункта выдачи'} <i>необязательно — можно уточнить с менеджером</i></label><input id="f_addr" value="${esc(st.address||'')}"></div>`:''}`}
     <div class="field"><label for="f_comment">Комментарий <i>необязательно</i></label><textarea id="f_comment" placeholder="Любые пожелания или вопросы">${esc(st.comment||'')}</textarea></div>
     <p class="muted">Оплата — после того, как менеджер подтвердит наличие и детали доставки. Статус и трек-номер появятся в разделе «Заказы».</p>
+    <label class="agree" id="agree"><input type="checkbox" id="f_agree" ${st.agree?'checked':''}>
+      <span>Даю <a href="#" data-doc="consent">согласие на обработку персональных данных</a> по <a href="#" data-doc="policy">политике</a> и принимаю <a href="#" data-doc="terms">условия продажи и возврата</a></span></label>
     <div class="buybar"><div class="in"><div class="p">${rub(total)}</div><button class="btn" id="send">Отправить заказ</button></div></div>`;
-  const stash = () => { st.name=$('#f_name').value; if($('#f_city')) st.city=$('#f_city').value; st.comment=$('#f_comment').value; if($('#f_phone')) st.phone=$('#f_phone').value; if($('#f_addr')) st.address=$('#f_addr').value; };
+  const stash = () => { st.agree=$('#f_agree').checked; st.name=$('#f_name').value; if($('#f_city')) st.city=$('#f_city').value; st.comment=$('#f_comment').value; if($('#f_phone')) st.phone=$('#f_phone').value; if($('#f_addr')) st.address=$('#f_addr').value; };
   $('#bk') && ($('#bk').onclick = renderCart);
+  bindDocs($('#app'));
+  $('#f_agree').onchange = () => { st.agree = $('#f_agree').checked; $('#agree').classList.remove('err'); };
   $$('[data-ct]').forEach(b => b.onclick = () => { stash(); st.contact=b.dataset.ct; haptic(); openCheckout(st); });
   $$('[data-dv]').forEach(b => b.onclick = () => { stash(); st.delivery=b.dataset.dv; haptic(); const y=scrollY; openCheckout(st); scrollTo(0,y); });
   $('#send').onclick = async () => {
@@ -992,10 +1214,11 @@ function openCheckout(st={}) {
     if (st.contact==='phone' && (st.phone||'').replace(/\D/g,'').length < 10) return toast('Проверьте номер телефона');
     if (!st.delivery) return toast('Выберите способ доставки');
     if (st.delivery==='yandex' && !(st.address||'').trim()) return toast('Укажите адрес в Москве для курьера');
+    if (!st.agree) { $('#agree').classList.add('err'); $('#agree').scrollIntoView({block:'center', behavior:'smooth'}); return toast('Отметьте согласие с условиями — без него заказ не оформить'); }
     $('#send').disabled = true; $('#send').textContent = 'Отправляем…';
     try {
       const r = await api('/api/order', {method:'POST', json:{items: lines.map(x => ({product_id:x.pid, size:x.size, color:x.color, qty:x.qty, look:x.look||null})),
-        name, contact:st.contact, phone: st.contact==='phone' ? st.phone : '', city: st.delivery==='yandex' ? 'Москва' : st.city, address: st.address||'', delivery: st.delivery, comment:st.comment, source:SOURCE}});
+        name, contact:st.contact, phone: st.contact==='phone' ? st.phone : '', city: st.delivery==='yandex' ? 'Москва' : st.city, address: st.address||'', delivery: st.delivery, comment:st.comment, source:SOURCE, consent:true}});
       try{ tg?.HapticFeedback?.notificationOccurred?.('success'); }catch(e){}
       S.cart = S.cart.filter(i => !lines.some(x => x.pid===i.pid && x.size===i.size && x.color===i.color && (x.look||null)===(i.look||null))); cartSave();
       setBack(null);
@@ -1003,7 +1226,7 @@ function openCheckout(st={}) {
         <p class="muted">${st.contact==='tg' ? 'Менеджер напишет вам в Telegram' : 'Менеджер позвонит или напишет вам'}, подтвердит наличие и детали доставки. Статус заказа и трек-номер — в разделе «Заказы».</p>
         <div style="height:16px"></div><div class="row2"><button class="btn ghost" id="home">В каталог</button><button class="btn" id="myo">Мои заказы</button></div></div>`;
       $('#home').onclick = renderShop; $('#myo').onclick = renderOrders;
-    } catch(e) { toast(/закончился|не продаётся/.test(e.message) ? e.message : 'Не отправилось. Проверьте интернет и попробуйте ещё раз'); $('#send').disabled = false; $('#send').textContent = 'Отправить заказ'; }
+    } catch(e) { toast(/закончился|не продаётся|согласие/.test(e.message) ? e.message : 'Не отправилось. Проверьте интернет и попробуйте ещё раз'); $('#send').disabled = false; $('#send').textContent = 'Отправить заказ'; }
   };
 }
 
@@ -1012,6 +1235,88 @@ const STC = {new:['Ждёт подтверждения','new'], paid:['Опла�
 const STEP = {new:1, paid:2, sent:3, arrived:4, done:5, cancel:0};
 const CARRIER = {cdek:'СДЭК', post:'Почта России', '5post':'5Post', yandex:'Яндекс Доставка', other:'Доставка'};
 const DELIV = [['cdek','СДЭК','Пункт выдачи или курьер · по всей России'],['post','Почта России','В любое почтовое отделение · по всей России'],['5post','5Post','Пункт выдачи в «Пятёрочке» или «Перекрёстке»'],['yandex','Яндекс Доставка','Курьер в день заказа · только Москва']];
+// ---------------------------------------------------------------- документы для покупателя
+// Данные продавца — здесь. Поменяли — поменялось во всех трёх документах.
+const LEGAL = {
+  seller: 'ФИО_ПРОДАВЦА',          // как в паспорте: Фамилия Имя Отчество (или ИП / самозанятый — тогда с ИНН)
+  email: 'EMAIL_ПРОДАВЦА',         // почта для обращений покупателей
+  tg: 'TG_ПРОДАВЦА',               // ник для вопросов, без @
+  date: '9 ноября 2026 г.',
+};
+const DOCS = {
+  policy: ['Политика обработки персональных данных', () => `
+    <p>Редакция от ${LEGAL.date}</p>
+    <h4>1. Кто обрабатывает данные</h4>
+    <p>Оператор персональных данных — ${esc(LEGAL.seller)} (далее — «Продавец»). Политика действует для магазина «LOOKSY STORE» в Telegram (бот и мини-приложение, далее — «Магазин») и составлена по Федеральному закону № 152-ФЗ «О персональных данных».</p>
+    <h4>2. Какие данные мы получаем</h4>
+    <ul><li>имя, которое вы указали при заказе;</li>
+    <li>данные профиля Telegram: ID, имя пользователя (username), имя и фамилия в профиле;</li>
+    <li>телефон, если вы выбрали связь по телефону;</li>
+    <li>город, адрес или пункт выдачи, способ доставки;</li>
+    <li>состав и история заказов, комментарии к заказам;</li>
+    <li>избранное, отзывы, оценки и фото к отзывам, переписка с менеджером;</li>
+    <li>действия в Магазине (просмотры товаров, добавление в корзину) и ссылка, по которой вы пришли, — для статистики.</li></ul>
+    <p>Мы не получаем данные банковских карт: оплата проходит по реквизитам, которые присылает менеджер. Специальные категории и биометрические данные не обрабатываются.</p>
+    <h4>3. Зачем</h4>
+    <ul><li>оформить, подтвердить и выполнить заказ, связаться с вами по нему;</li>
+    <li>передать заказ в службу доставки;</li>
+    <li>вести учёт продаж, возвратов и обращений;</li>
+    <li>публиковать ваши отзывы (имя, оценку, текст и фото);</li>
+    <li>сообщать в Telegram о статусе заказа, а также о снижении цены и поступлении вещей, которые вы добавили в избранное;</li>
+    <li>улучшать Магазин по обезличенной статистике;</li>
+    <li>отвечать на вопросы и требования.</li></ul>
+    <p>Рекламные рассылки без отдельного согласия мы не делаем.</p>
+    <h4>4. Основания</h4>
+    <p>Ваше согласие (п. 1 ч. 1 ст. 6 152-ФЗ) и исполнение договора купли-продажи, стороной которого вы являетесь (п. 5 ч. 1 ст. 6 152-ФЗ).</p>
+    <h4>5. Что мы делаем с данными</h4>
+    <p>Сбор, запись, систематизация, накопление, хранение, уточнение, использование, передача (предоставление, доступ), обезличивание, блокирование, удаление и уничтожение — с использованием средств автоматизации и без них.</p>
+    <h4>6. Кому передаём</h4>
+    <ul><li>службе доставки, которую вы выбрали (СДЭК, Почта России, 5Post, Яндекс Доставка), — имя, телефон и данные для доставки, только чтобы доставить заказ;</li>
+    <li>Telegram — Магазин работает внутри мессенджера, и переписка идёт через него;</li>
+    <li>поставщикам хостинга: Supabase Inc. (база данных, файлы и сервер Магазина) и GitHub Inc. (размещение страниц мини-приложения). Серверы находятся за пределами России, поэтому происходит трансграничная передача данных.</li></ul>
+    <p>Мы не продаём и не передаём ваши данные для рекламы.</p>
+    <h4>7. Сколько храним</h4>
+    <p>Пока это нужно для целей из раздела 3, но не дольше 3 лет после последнего заказа, если закон не требует хранить дольше. При отзыве согласия данные удаляются в течение 30 дней, кроме тех, которые мы обязаны хранить по закону.</p>
+    <h4>8. Ваши права</h4>
+    <p>Вы можете узнать, какие данные мы храним, попросить исправить или удалить их и отозвать согласие. Для этого напишите в бот Магазина${S.bot?` @${esc(S.bot)}`:''}, в Telegram @${esc(LEGAL.tg)} или на ${esc(LEGAL.email)}. Мы ответим в течение 10 рабочих дней. Если считаете, что ваши права нарушены, вы можете обратиться в Роскомнадзор.</p>
+    <h4>9. Как защищаем</h4>
+    <p>Вход только через подпись Telegram, соединение по HTTPS, доступ к заказам есть только у Продавца и его менеджеров.</p>
+    <h4>10. Изменения</h4>
+    <p>Мы можем обновлять политику. Новая редакция действует с момента публикации в Магазине.</p>`],
+  consent: ['Согласие на обработку персональных данных', () => `
+    <p>Оформляя заказ в магазине «LOOKSY STORE» в Telegram, я свободно, своей волей и в своём интересе даю согласие ${esc(LEGAL.seller)} (далее — «Продавец») на обработку моих персональных данных: имени; данных профиля Telegram (ID, username, имя); телефона; города, адреса и данных для доставки; состава и истории заказов; избранного, отзывов и переписки.</p>
+    <p><b>Цели:</b> оформление, подтверждение и исполнение заказа, связь со мной, доставка, учёт продаж и возвратов, публикация моего отзыва, уведомления о заказе и о вещах из избранного, ответы на обращения.</p>
+    <p><b>Действия:</b> сбор, запись, систематизация, накопление, хранение, уточнение, использование, передача службам доставки, Telegram и поставщикам хостинга (в том числе трансграничная), обезличивание, блокирование, удаление, уничтожение — с использованием средств автоматизации и без них.</p>
+    <p><b>Срок:</b> до достижения целей, но не более 3 лет после последнего заказа, или до отзыва согласия.</p>
+    <p>Я могу отозвать согласие сообщением в бот Магазина, в Telegram @${esc(LEGAL.tg)} или письмом на ${esc(LEGAL.email)}. Порядок обработки описан в <a href="#" data-doc="policy">Политике обработки персональных данных</a>.</p>`],
+  terms: ['Условия продажи и возврата', () => `
+    <p>Редакция от ${LEGAL.date}. Это публичная оферта ${esc(LEGAL.seller)} (далее — «Продавец») о продаже товаров из каталога магазина «LOOKSY STORE» в Telegram дистанционным способом. Отношения регулируются Гражданским кодексом РФ, Законом «О защите прав потребителей» и Правилами продажи товаров дистанционным способом.</p>
+    <h4>1. Заказ</h4>
+    <p>Оформленный в Магазине заказ — это ваше предложение купить товар. Менеджер связывается с вами в Telegram или по телефону, подтверждает наличие, стоимость и доставку. Договор считается заключённым с момента оплаты.</p>
+    <h4>2. Цена и оплата</h4>
+    <p>Цены указаны в рублях. Доставка оплачивается отдельно по тарифам выбранной службы, если с менеджером не договорились иначе. Оплата — по реквизитам, которые присылает менеджер. Продавец не просит данные карты в чате.</p>
+    <h4>3. Доставка</h4>
+    <p>Товар передаётся выбранной службе доставки (СДЭК, Почта России, 5Post, по Москве — Яндекс Доставка). Сроки — по тарифам службы. Трек-номер появляется в разделе «Заказы» и приходит в чат с ботом. Проверьте товар при получении.</p>
+    <h4>4. Возврат товара надлежащего качества</h4>
+    <p>Вы можете отказаться от товара в любое время до его получения и в течение 7 дней после (ст. 26.1 Закона «О защите прав потребителей»). Если при доставке вам не передали письменную информацию о порядке возврата, срок — 3 месяца. Нужно сохранить товарный вид, потребительские свойства, ярлыки и документ об оплате; если документа нет, можно сослаться на другие доказательства покупки (например, переписку в Telegram).</p>
+    <p>Деньги возвращаются в течение 10 дней с даты требования, за вычетом расходов Продавца на доставку возвращённого товара от вас. Не подлежит возврату товар с индивидуальными свойствами, сделанный под вас по вашему заказу.</p>
+    <h4>5. Товар с недостатком</h4>
+    <p>Если обнаружился брак, вы можете потребовать замену, уменьшение цены, устранение недостатка или вернуть деньги (ст. 18 Закона «О защите прав потребителей»). Расходы на пересылку бракованного товара несёт Продавец.</p>
+    <h4>6. Как оформить возврат</h4>
+    <p>Напишите в бот Магазина (кнопка «Вопрос по заказу» в разделе «Заказы»), в Telegram @${esc(LEGAL.tg)} или на ${esc(LEGAL.email)}: номер заказа, что возвращаете и почему. Менеджер подскажет, как отправить товар.</p>
+    <h4>7. Продавец</h4>
+    <p>${esc(LEGAL.seller)}. E-mail: ${esc(LEGAL.email)}. Реквизиты продавца менеджер сообщает при подтверждении заказа, вместе с реквизитами для оплаты.</p>`],
+};
+function openDoc(k) {
+  const d = DOCS[k]; if (!d) return;
+  sheet(`<h3>${d[0]}</h3><div class="doc">${d[1]()}</div><div style="height:12px"></div><button class="btn ghost" id="doc_ok">Понятно</button>`, () => {
+    $('#doc_ok').onclick = closeSheet; bindDocs($('#sheet'));
+    const sh = $('#sheet .sheet'); sh && (sh.scrollTop = 0);
+  });
+}
+const bindDocs = root => root.querySelectorAll('[data-doc]').forEach(a => a.onclick = e => { e.preventDefault(); e.stopPropagation(); openDoc(a.dataset.doc); });
+const docLinks = () => `<div class="doclinks"><a href="#" data-doc="terms">Условия продажи и возврата</a><a href="#" data-doc="policy">Политика конфиденциальности</a></div>`;
+
 function openLink(url) { try { if (tg?.openLink) return tg.openLink(url); } catch(e) {} window.open(url, '_blank'); }
 async function renderOrders() {
   S.view='orders'; setBack(renderShop);
@@ -1040,8 +1345,9 @@ async function renderOrders() {
         <button class="textbtn" data-help>${I.chat}Вопрос по заказу</button>
       </div>`; }).join('')
     : `<div class="empty"><b>Заказов пока нет</b>Здесь будет статус каждого заказа и трек-номер для отслеживания.</div><button class="btn ghost" id="tocat">Перейти в каталог</button>`}
+    ${docLinks()}
     ${nav('orders')}`;
-  bindNav();
+  bindNav(); bindDocs($('#app'));
   $('#tocat') && ($('#tocat').onclick = renderShop);
   $$('[data-open]').forEach(b => b.onclick = () => openProduct(+b.dataset.open));
   $$('[data-copy]').forEach(b => b.onclick = () => navigator.clipboard?.writeText(b.dataset.copy).then(()=>toast('Трек-номер скопирован'), ()=>toast(b.dataset.copy)));

@@ -247,6 +247,8 @@ async function handle(req: Request): Promise<Response> {
     const phone = String(d.phone || "").trim().slice(0, 40);
     const contact = d.contact === "phone" ? "phone" : "tg";
     if (!name || (contact === "phone" && !phone) || (contact === "tg" && !user?.id)) return err(400, "name and contact required");
+    // без галочки согласия (152-ФЗ) заказ не принимаем; время согласия храним в заказе
+    if (d.consent !== true) return err(400, "Отметьте согласие на обработку персональных данных — без него заказ не оформить");
     const delivery = DELIVERY[d.delivery] ? String(d.delivery) : "";
     const address = String(d.address || "").trim().slice(0, 300);
     if (delivery === "yandex" && !address) return err(400, "Для Яндекс Доставки укажите адрес в Москве");
@@ -290,7 +292,7 @@ async function handle(req: Request): Promise<Response> {
       price: total, cost, items, size: items[0].size, color: items[0].color,
       name, phone, contact, city: delivery === "yandex" ? "Москва" : String(d.city || "").slice(0, 120), comment: String(d.comment || "").slice(0, 500),
       delivery, address, carrier: delivery || null,
-      user_id: user?.id ?? null, username: user?.username ?? null, source, updated_at: now(),
+      user_id: user?.id ?? null, username: user?.username ?? null, source, updated_at: now(), consent_at: now(),
     }).select().single()) as Record<string, unknown>;
     await db.from("events").insert(items.map((i) => ({ type: "order", product_id: i.product_id, user_id: user?.id ?? null, source })));
     await notifyAdmins(o);
