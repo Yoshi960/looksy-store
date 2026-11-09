@@ -172,9 +172,9 @@ img{max-width:100%}
 .gal{position:relative;margin:-10px -16px 0}
 .gal{overflow:hidden;touch-action:pan-y}
 .gal{background:var(--bg)}
-.gal .track{display:flex;touch-action:pan-y;will-change:transform}
+.gal .track{display:flex;touch-action:pan-y;will-change:transform;backface-visibility:hidden}
 .gal .track.drag{transition:none}
-.gal img{transform-origin:50% 50%;backface-visibility:hidden;flex:none;width:100%;aspect-ratio:3/4;object-fit:cover;background:var(--surface2);display:block;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.gal img{flex:none;width:100%;aspect-ratio:3/4;object-fit:cover;background:var(--surface2);display:block;user-select:none;-webkit-user-drag:none;pointer-events:none}
 .gal .dots{position:absolute;left:0;right:0;bottom:36px;display:flex;justify-content:center;gap:6px;pointer-events:none}
 .gal .dots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.5);transition:width .2s}
 .gal .dots i.on{width:18px;border-radius:3px;background:#fff}
@@ -359,7 +359,7 @@ h2.sec2{font:800 16px var(--display);margin:22px 0 10px}
 .gal .zoom .ico{width:18px;height:18px}
 .lb{position:fixed;inset:0;z-index:30;background:rgba(10,10,12,.97);color:#fff;animation:fade .2s;touch-action:none;overscroll-behavior:contain}
 .lb .vp{position:absolute;inset:0;overflow:hidden}
-.lb .strip{display:flex;height:100%;will-change:transform}
+.lb .strip{display:flex;height:100%;will-change:transform;backface-visibility:hidden}
 .lb .strip.drag{transition:none}
 .lb .sl{flex:none;width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .lb .sl img{max-width:100%;max-height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;pointer-events:none;transform-origin:50% 50%}
@@ -782,7 +782,7 @@ function openProduct(id, sel={}) {
   const withIt = complements([p], 6);
   const similar = S.products.filter(x => x.id!==p.id && x.in_stock && !withIt.includes(x) && (x.category_id===p.category_id || (catOf(x.category_id)?.grp===catOf(p.category_id)?.grp))).sort((a,b)=>(b.category_id===p.category_id)-(a.category_id===p.category_id)).slice(0,6);
   $('#app').innerHTML = `
-    <div class="gal"><div class="track" id="trk">${ph.map(f=>`<img src="${img(f)}" alt="">`).join('')}</div>
+    <div class="gal"><div class="track" id="trk">${ph.map(f=>`<img src="${img(f)}" alt="" decoding="async">`).join('')}</div>
       ${ph.length>1?`<div class="count" id="cnt">1 / ${ph.length}</div><div class="dots" id="dots">${ph.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>`:''}
       ${tg?'':`<button class="iconbtn tl" id="bk" aria-label="Назад">${I.back}</button>`}
       ${p.photos.length?`<button class="iconbtn zoom" id="zm" aria-label="Открыть фото на весь экран">${I.zoom}</button>`:''}
@@ -829,63 +829,52 @@ function openProduct(id, sel={}) {
 }
 const inCart = (p, sel) => S.cart.some(i => i.pid === p.id && (!p.sizes.length || i.size === (sel.size || (p.sizes.length===1?p.sizes[0]:null))) && (!p.colors.length || i.color === (sel.color || (p.colors.length===1?p.colors[0]:null))));
 
-// Плавная лента фото: фото идёт точно за пальцем, после отпускания доезжает «пружиной» с учётом скорости
-// свайпа. Анимация на requestAnimationFrame, а не CSS-переходом, поэтому её можно поймать пальцем
-// на полпути — без рывка. Соседние фото во время листания чуть уменьшаются (и в просмотре — притухают).
-function slider(trk, n, {start=0, onIndex, scale=0.05, fade=0}={}) {
-  const kids = [...trk.children];
-  const W = () => trk.parentElement.clientWidth || 1;
+// Лента фото. Во время свайпа фото идёт точно за пальцем (обновление раз в кадр), после отпускания
+// доезжает CSS-анимацией transform — её считает видеокарта, поэтому не лагает даже на слабых телефонах.
+// Время доводки 0.18–0.28 с и зависит от скорости свайпа. Анимацию можно поймать пальцем на полпути без рывка.
+function slider(trk, n, {start=0, onIndex}={}) {
+  let w = trk.parentElement.clientWidth || 1;
   const clampI = i => Math.max(0, Math.min(n - 1, i));
-  let idx = clampI(start), pos = -idx * W(), vel = 0, raf = 0;
-  const render = () => {
-    trk.style.transform = `translate3d(${pos}px,0,0)`;
-    if (!scale && !fade) return;
-    const w = W();
-    kids.forEach((k, i) => { const d = Math.min(1, Math.abs(i + pos / w));
-      k.style.transform = d > .002 ? `scale(${1 - scale * d})` : '';
-      if (fade) k.style.opacity = d > .002 ? String(1 - fade * d) : ''; });
-  };
-  const stop = () => { if (raf) cancelAnimationFrame(raf); raf = 0; };
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  // пружина без «перелёта»: мягко разгоняется со скорости пальца и плавно тормозит (~0.4 с)
+  let idx = clampI(start), pos = -idx * w, raf = 0, pending = null;
+  const EASE = 'cubic-bezier(.22,.75,.25,1)';
+  const set = (p, ms = 0) => { pos = p; trk.style.transition = ms ? `transform ${ms}ms ${EASE}` : 'none'; trk.style.transform = `translate3d(${p}px,0,0)`; };
   const animTo = (i, v = 0) => {
-    stop(); const prev = idx; idx = clampI(i); if (idx !== prev) onIndex?.(idx, true); else onIndex?.(idx, false);
-    const target = -idx * W();
-    if (reduce) { pos = target; return render(); }
-    vel = v; let last = performance.now();
-    const w = 0.016, k = w * w, c = 2 * w * 0.92;   // слегка недодемпфированная — «живая», но без отскока
-    const step = now => {
-      let dt = Math.min(48, now - last); last = now;
-      while (dt > 0) { const h = Math.min(4, dt); const a = -k * (pos - target) - c * vel; vel += a * h; pos += vel * h; dt -= h; }
-      if (Math.abs(pos - target) < 0.4 && Math.abs(vel) < 0.02) { pos = target; vel = 0; render(); raf = 0; return; }
-      render(); raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
+    const prev = idx; idx = clampI(i);
+    const target = -idx * w, dist = Math.abs(target - pos);
+    // быстрый свайп — быстрее доводка; короткий путь — короче анимация
+    const ms = dist < 1 ? 0 : Math.round(Math.max(180, Math.min(280, dist / Math.max(Math.abs(v), 1.4))));
+    set(target, ms);
+    onIndex?.(idx, idx !== prev);
   };
-  const jump = i => { stop(); idx = clampI(i); pos = -idx * W(); vel = 0; render(); onIndex?.(idx, false); };
-  // перетаскивание: с упругим краем на первом и последнем фото
+  const jump = i => { idx = clampI(i); set(-idx * w); onIndex?.(idx, false); };
   let base = 0, samples = [];
-  const grab = () => { stop(); base = pos; samples = [[performance.now(), 0]]; };
+  // поймать ленту: если она ещё едет — останавливаем там, где она сейчас на экране
+  const grab = () => {
+    if (trk.style.transition && trk.style.transition !== 'none') {
+      const m = new DOMMatrix(getComputedStyle(trk).transform); set(m.m41);
+    }
+    base = pos; samples = [[performance.now(), 0]];
+  };
   const drag = dx => {
-    let p = base + dx; const min = -(n - 1) * W();
-    if (p > 0) p = p * 0.35; else if (p < min) p = min + (p - min) * 0.35;
-    pos = p; render();
-    const t = performance.now(); samples.push([t, dx]); while (samples.length > 2 && t - samples[0][0] > 90) samples.shift();
+    let p = base + dx; const min = -(n - 1) * w;
+    if (p > 0) p *= 0.3; else if (p < min) p = min + (p - min) * 0.3;   // упругий край
+    const t = performance.now(); samples.push([t, dx]); while (samples.length > 2 && t - samples[0][0] > 80) samples.shift();
+    pending = p;
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (pending !== null) set(pending); pending = null; });
   };
   const release = (cancel = false) => {
+    if (raf) { cancelAnimationFrame(raf); raf = 0; if (pending !== null) set(pending); pending = null; }
     const [t1, x1] = samples[0] || [0, 0], [t2, x2] = samples[samples.length - 1] || [0, 0];
-    const v = t2 > t1 ? (x2 - x1) / (t2 - t1) : 0;           // px/мс
+    const v = t2 > t1 ? (x2 - x1) / (t2 - t1) : 0;                     // px/мс
     if (cancel) return animTo(idx, 0);
-    const w = W(), from = Math.round(-base / w);
-    const projected = pos + v * 180;                          // куда «долетело» бы по инерции
-    let to = Math.round(-projected / w);
-    if (Math.abs(v) > 0.35) to = from + (v < 0 ? 1 : -1);     // резкий флик — всегда следующее фото
-    to = Math.max(from - 1, Math.min(from + 1, to));          // не больше одного фото за свайп
-    animTo(to, v);
+    const from = Math.round(-base / w);
+    let to = Math.round(-(pos + v * 120) / w);                          // с учётом инерции
+    if (Math.abs(v) > 0.3) to = from + (v < 0 ? 1 : -1);                // флик — всегда следующее фото
+    animTo(Math.max(from - 1, Math.min(from + 1, to)), v);
   };
-  addEventListener('resize', () => { if (trk.isConnected) { pos = -idx * W(); render(); } });
-  render(); onIndex?.(idx, false);
-  return {get idx(){ return idx; }, animTo, jump, grab, drag, release, stop};
+  addEventListener('resize', () => { if (trk.isConnected) { w = trk.parentElement.clientWidth || 1; set(-idx * w); } });
+  set(pos); onIndex?.(idx, false);
+  return {get idx(){ return idx; }, animTo, jump, grab, drag, release};
 }
 
 // Галерея в карточке. Жесты слушаем на рамке галереи, а не на ленте; жест забираем себе (preventDefault),
@@ -896,10 +885,9 @@ function gallery(trk, n, start=0, onChange, onTap) {
   const sync = (i, moved) => {
     $('#cnt') && ($('#cnt').textContent = `${i + 1} / ${n}`);
     $$('#dots i').forEach((d, k) => d.classList.toggle('on', k === i));
-    if (moved) haptic('soft');
     onChange?.(i);
   };
-  const sl = slider(trk, n, {start, onIndex: sync, scale: 0.04});
+  const sl = slider(trk, n, {start, onIndex: sync});
   const api = {go: (i, anim=true) => anim ? sl.animTo(i) : sl.jump(i)};
   // тап по фото открывает просмотр с приближением (если он есть), иначе — листает половинками
   if (n < 2) {
@@ -965,9 +953,8 @@ function viewer(photos, start=0, onClose) {
     idx = i;
     const nn = box.querySelector('.n'); nn && (nn.textContent = `${idx+1} / ${n}`);
     box.querySelectorAll('.dots i').forEach((d,k) => d.classList.toggle('on', k===idx));
-    if (moved) haptic('soft');
   };
-  const sl = slider(strip, n, {start: idx, onIndex: sync, scale: 0.08, fade: 0.55});
+  const sl = slider(strip, n, {start: idx, onIndex: sync});
   const show = (i, anim=true) => anim ? sl.animTo(i) : sl.jump(i);
   // приблизить к точке (cx, cy) экрана до масштаба ns
   const zoomAt = (cx, cy, ns, anim=false) => {
@@ -1056,7 +1043,7 @@ function openLook(id, sel={}) {
   const inCartAll = items.length && items.every(p => !p.in_stock || S.cart.some(i => i.pid === p.id && i.look === l.id));
   const self = () => openLook(id, sel);
   $('#app').innerHTML = `
-    <div class="gal"><div class="track" id="trk">${(ph.length?ph:['']).map(f=>`<img src="${img(f)}" alt="">`).join('')}</div>
+    <div class="gal"><div class="track" id="trk">${(ph.length?ph:['']).map(f=>`<img src="${img(f)}" alt="" decoding="async">`).join('')}</div>
       ${ph.length>1?`<div class="count" id="cnt">1 / ${ph.length}</div><div class="dots" id="dots">${ph.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>`:''}
       ${tg?'':`<button class="iconbtn tl" id="bk" aria-label="Назад">${I.back}</button>`}
       ${ph.length?`<button class="iconbtn zoom" id="zm" aria-label="Открыть фото на весь экран">${I.zoom}</button>`:''}
