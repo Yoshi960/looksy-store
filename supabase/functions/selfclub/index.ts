@@ -186,6 +186,10 @@ async function onMessage(m: any) {
   if (text.startsWith("/start")) return onStart(from, text.split(" ")[1] ?? "");
   if (ADMINS.has(from.id)) {
     if (text === "/stats") return void await say(from.id, await stats());
+    if (text === "/reset") { // пройти воронку заново для проверки
+      await db.from("sc_users").delete().eq("user_id", from.id);
+      return void await say(from.id, "Сбросил. Нажми /start — пройдёшь всё как новый человек.");
+    }
     // ответ на пересланный вопрос: reply на сообщение бота с #u<id>
     const ref = m.reply_to_message?.text?.match(/#u(\d+)/);
     if (ref && text) {
@@ -193,7 +197,7 @@ async function onMessage(m: any) {
       return void await say(from.id, r.ok ? "Отправил ✅" : `Не дошло: ${esc(r.description ?? "")}`);
     }
     if (text === "/help" || text === "/admin") return void await say(from.id,
-      "/stats — воронка и источники\nОтветить человеку — сделай reply на его пересланное сообщение.");
+      "/stats — воронка и источники\n/reset — пройти воронку заново\nОтветить человеку — сделай reply на его пересланное сообщение.");
   }
   if (!text) return;
   const name = esc([from.first_name, from.username ? "@" + from.username : ""].filter(Boolean).join(" "));
