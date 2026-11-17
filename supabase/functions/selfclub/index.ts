@@ -34,6 +34,15 @@ async function say(chat: number, text: string, markup?: unknown) {
   if (!r.ok && r.error_code === 403) await db.from("sc_users").update({ blocked: true }).eq("user_id", chat);
   return r;
 }
+// сообщение с картинкой (если задана) или просто текст
+async function post(chat: number, photo: string, text: string, markup?: unknown) {
+  if (photo) {
+    const r = await tg("sendPhoto", { chat_id: chat, photo: `${WEBAPP_URL}/${photo}`, caption: text, parse_mode: "HTML", reply_markup: markup });
+    if (r.ok) return r;
+    console.error("sendPhoto", r.description);
+  }
+  return await say(chat, text, markup);
+}
 async function typing(chat: number, ms = 1500) {
   await tg("sendChatAction", { chat_id: chat, action: "typing" });
   await sleep(ms);
@@ -186,6 +195,16 @@ async function onMessage(m: any) {
   if (text.startsWith("/start")) return onStart(from, text.split(" ")[1] ?? "");
   if (ADMINS.has(from.id)) {
     if (text === "/stats") return void await say(from.id, await stats());
+    if (text === "/preview") { // показать все напоминания сразу, как их увидит человек
+      await say(from.id, `<i>Через ${T.NUDGE_HOURS} ч — если бросил тест на середине:</i>`);
+      await post(from.id, T.NUDGE_PHOTO, T.NUDGE, kb([{ text: T.NUDGE_BTN, callback_data: "resume" }]));
+      await say(from.id, `<i>Через ${T.REMIND1_HOURS} ч после видео — если не вступил:</i>`);
+      await post(from.id, T.REMIND1_PHOTO, T.REMIND1, payKb(T.REMIND1_BTN));
+      await say(from.id, `<i>Через ${T.REMIND2_HOURS} ч после видео — последнее:</i>`);
+      await post(from.id, T.REMIND2_PHOTO, T.REMIND2, payKb(T.REMIND2_BTN));
+      await say(from.id, "<i>После вступления в группу:</i>");
+      return void await say(from.id, T.WELCOME);
+    }
     if (text === "/reset") { // пройти воронку заново для проверки
       await db.from("sc_users").delete().eq("user_id", from.id);
       return void await say(from.id, "Сбросил. Нажми /start — пройдёшь всё как новый человек.");
@@ -197,7 +216,7 @@ async function onMessage(m: any) {
       return void await say(from.id, r.ok ? "Отправил ✅" : `Не дошло: ${esc(r.description ?? "")}`);
     }
     if (text === "/help" || text === "/admin") return void await say(from.id,
-      "/stats — воронка и источники\n/reset — пройти воронку заново\nОтветить человеку — сделай reply на его пересланное сообщение.");
+      "/stats — воронка и источники\n/reset — пройти воронку заново\n/preview — посмотреть все напоминания\nОтветить человеку — сделай reply на его пересланное сообщение.");
   }
   if (!text) return;
   const name = esc([from.first_name, from.username ? "@" + from.username : ""].filter(Boolean).join(" "));
@@ -242,13 +261,13 @@ async function sweep(force = false) {
     .lt("started_at", t - T.NUDGE_HOURS * 3600).gt("started_at", t - 7 * 86400).limit(50)).data ?? []) as Row[];
   for (const u of stuck) {
     await upd(u.user_id, { nudge_at: t });
-    const r = await say(u.user_id, T.NUDGE, kb([{ text: T.NUDGE_BTN, callback_data: u.q > 0 ? "resume" : "go" }]));
+    const r = await post(u.user_id, T.NUDGE_PHOTO, T.NUDGE, kb([{ text: T.NUDGE_BTN, callback_data: u.q > 0 ? "resume" : "go" }]));
     if (r.ok) sent++;
   }
   // 2) видел оффер, не вступил
   const steps = [
-    { field: "remind1_at", hours: T.REMIND1_HOURS, text: T.REMIND1, btn: T.REMIND1_BTN },
-    { field: "remind2_at", hours: T.REMIND2_HOURS, text: T.REMIND2, btn: T.REMIND2_BTN },
+    { field: "remind1_at", hours: T.REMIND1_HOURS, text: T.REMIND1, btn: T.REMIND1_BTN, photo: T.REMIND1_PHOTO },
+    { field: "remind2_at", hours: T.REMIND2_HOURS, text: T.REMIND2, btn: T.REMIND2_BTN, photo: T.REMIND2_PHOTO },
   ];
   for (const s of steps) {
     let q = db.from("sc_users").select("*").is("member_at", null).is(s.field, null).eq("blocked", false)
@@ -261,7 +280,7 @@ async function sweep(force = false) {
         continue;
       }
       await upd(u.user_id, { [s.field]: t });
-      const r = await say(u.user_id, s.text, payKb(s.btn));
+      const r = await post(u.user_id, s.photo, s.text, payKb(s.btn));
       if (r.ok) sent++;
     }
   }

@@ -70,6 +70,11 @@ export const OFFER = `<b>SelfClub | Внутренний круг</b> 🏛
 Если остались вопросы — напиши прямо в этот чат, тебе ответит владелец канала.`;
 export const OFFER_BTN = "Вступить в клуб";
 
+// Картинки к напоминаниям: файлы в web/selfclub/. Пустая строка — напоминание уйдёт текстом.
+export const NUDGE_PHOTO = "";
+export const REMIND1_PHOTO = "";
+export const REMIND2_PHOTO = "";
+
 // человек начал, но не дошёл до видео — через NUDGE_HOURS часов
 export const NUDGE_HOURS = 3;
 export const NUDGE = `Ты остановился на полпути 🙂
