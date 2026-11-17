@@ -39,7 +39,8 @@ async function post(chat: number, photo: string, text: string, markup?: unknown)
   if (photo) {
     const r = await tg("sendPhoto", { chat_id: chat, photo: `${WEBAPP_URL}/${photo}`, caption: text, parse_mode: "HTML", reply_markup: markup });
     if (r.ok) return r;
-    console.error("sendPhoto", r.description);
+    console.error("sendPhoto", photo, r.description);
+    if (ADMINS.has(chat)) await say(chat, `⚠️ Картинка ${esc(photo)} не ушла: ${esc(r.description ?? "")}`);
   }
   return await say(chat, text, markup);
 }
