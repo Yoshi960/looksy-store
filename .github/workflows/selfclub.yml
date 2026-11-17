@@ -1,0 +1,14 @@
+name: SelfClub — напоминания
+
+# Бот сам рассылает напоминания при каждом входящем сообщении (не чаще раза в 10 минут).
+# Этот запуск — подстраховка, если в боте долго тихо.
+on:
+  schedule:
+    - cron: "41 */3 * * *"
+  workflow_dispatch:
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS -X POST "https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co/functions/v1/selfclub/cron?key=${{ secrets.SETUP_KEY }}"
