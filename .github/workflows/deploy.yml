@@ -47,7 +47,8 @@ jobs:
             supabase secrets set --project-ref "$REF" --yes GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
           fi
           if [ -n "${{ secrets.SELFCLUB_BOT_TOKEN }}" ]; then
-            supabase secrets set --project-ref "$REF" --yes SELFCLUB_BOT_TOKEN="${{ secrets.SELFCLUB_BOT_TOKEN }}"
+            supabase secrets set --project-ref "$REF" --yes SELFCLUB_BOT_TOKEN="${{ secrets.SELFCLUB_BOT_TOKEN }}" \
+              SELFCLUB_ADMIN_IDS="${{ secrets.ADMIN_IDS }},8240753258"
           fi
       - name: Опубликовать функцию
         run: supabase functions deploy api --project-ref "$REF" --no-verify-jwt --yes

@@ -6,7 +6,7 @@ import * as T from "./texts.ts";
 const TOKEN = Deno.env.get("SELFCLUB_BOT_TOKEN") ?? "";
 const SETUP_KEY = Deno.env.get("SETUP_KEY") ?? "";
 const SECRET = (Deno.env.get("WEBHOOK_SECRET") ?? "") + "sc";
-const ADMINS = new Set((Deno.env.get("ADMIN_IDS") ?? "").split(",").map((s) => Number(s.trim())).filter(Boolean));
+const ADMINS = new Set((Deno.env.get("SELFCLUB_ADMIN_IDS") || Deno.env.get("ADMIN_IDS") || "").split(",").map((s) => Number(s.trim())).filter(Boolean));
 const WEBAPP_URL = (Deno.env.get("WEBAPP_URL") ?? "").replace(/\/$/, "");
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
   auth: { persistSession: false },
@@ -193,7 +193,7 @@ async function onMessage(m: any) {
     // ответ на пересланный вопрос: reply на сообщение бота с #u<id>
     const ref = m.reply_to_message?.text?.match(/#u(\d+)/);
     if (ref && text) {
-      const r = await say(Number(ref[1]), esc(text));
+      const r = await say(Number(ref[1]), T.ANSWER_PREFIX + esc(text));
       return void await say(from.id, r.ok ? "Отправил ✅" : `Не дошло: ${esc(r.description ?? "")}`);
     }
     if (text === "/help" || text === "/admin") return void await say(from.id,
