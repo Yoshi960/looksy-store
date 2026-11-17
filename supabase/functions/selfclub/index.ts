@@ -34,13 +34,41 @@ async function say(chat: number, text: string, markup?: unknown) {
   if (!r.ok && r.error_code === 403) await db.from("sc_users").update({ blocked: true }).eq("user_id", chat);
   return r;
 }
-// сообщение с картинкой (если задана) или просто текст
+// сообщение с картинкой (если задана) или просто текст.
+// Картинку бот сам скачивает со своего сайта и загружает в Telegram один раз, дальше шлёт по file_id.
+async function photoInput(photo: string): Promise<string | Blob> {
+  const cached = await kv("photo:" + photo);
+  if (cached) return cached;
+  const r = await fetch(`${WEBAPP_URL}/${photo}`);
+  if (!r.ok) throw new Error(`сайт ответил ${r.status} на ${WEBAPP_URL}/${photo}`);
+  return new Blob([await r.arrayBuffer()], { type: "image/jpeg" });
+}
 async function post(chat: number, photo: string, text: string, markup?: unknown) {
   if (photo) {
-    const r = await tg("sendPhoto", { chat_id: chat, photo: `${WEBAPP_URL}/${photo}`, caption: text, parse_mode: "HTML", reply_markup: markup });
-    if (r.ok) return r;
-    console.error("sendPhoto", photo, r.description);
-    if (ADMINS.has(chat)) await say(chat, `⚠️ Картинка ${esc(photo)} не ушла: ${esc(r.description ?? "")}`);
+    let reason = "";
+    try {
+      const input = await photoInput(photo);
+      let r: TgResp;
+      if (typeof input === "string") {
+        r = await tg("sendPhoto", { chat_id: chat, photo: input, caption: text, parse_mode: "HTML", reply_markup: markup });
+      } else {
+        const fd = new FormData();
+        fd.append("chat_id", String(chat));
+        fd.append("photo", input, photo.split("/").pop());
+        fd.append("caption", text);
+        fd.append("parse_mode", "HTML");
+        if (markup) fd.append("reply_markup", JSON.stringify(markup));
+        r = await (await fetch(`https://api.telegram.org/bot${TOKEN}/sendPhoto`, { method: "POST", body: fd })).json();
+        const sizes = r.result?.photo as Array<{ file_id: string }> | undefined;
+        if (r.ok && sizes?.length) await setKv("photo:" + photo, sizes[sizes.length - 1].file_id);
+      }
+      if (r.ok) return r;
+      reason = r.description ?? "";
+    } catch (e) {
+      reason = String(e);
+    }
+    console.error("sendPhoto", photo, reason);
+    if (ADMINS.has(chat)) await say(chat, `⚠️ Картинка ${esc(photo)} не ушла: ${esc(reason)}`);
   }
   return await say(chat, text, markup);
 }
