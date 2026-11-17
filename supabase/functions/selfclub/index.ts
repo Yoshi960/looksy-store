@@ -97,6 +97,13 @@ async function isMember(uid: number): Promise<boolean> {
   return r.ok && ["member", "administrator", "creator", "restricted"].includes(r.result?.status);
 }
 
+// уведомление владельцу (всем админам)
+async function notifyAdmins(text: string) {
+  for (const a of ADMINS) await say(a, text);
+}
+const who = (u: { first_name?: string; username?: string; id?: number }) =>
+  esc([u.first_name, u.username ? "@" + u.username : ""].filter(Boolean).join(" ") || String(u.id ?? ""));
+
 // ---------------------------------------------------------------- шаги воронки
 // Правка сообщения: у картинки меняем подпись, у текста — текст.
 async function edit(chat: number, id: number, text: string, markup?: unknown) {
@@ -137,6 +144,10 @@ async function onStart(from: any, payload: string) {
       user_id: id, username: from.username ?? null, first_name: from.first_name ?? null,
       src: payload ? payload.slice(0, 40) : null, started_at: now(),
     });
+    if (!ADMINS.has(id)) {
+      const total = (await db.from("sc_users").select("user_id", { count: "exact", head: true })).count ?? 0;
+      await notifyAdmins(`🆕 Новый в боте: <b>${who(from)}</b>\nИсточник: ${esc(payload || "без метки")}\nВсего в боте: ${total}`);
+    }
   } else {
     await upd(id, { blocked: false, username: from.username ?? null });
     if (u.member_at && !u.left_at) return void await say(id, T.ALREADY);
@@ -277,10 +288,15 @@ async function onChatMember(cm: any, mine: boolean) {
     if (u) {
       const first = !u.member_at;
       await upd(member.id, { member_at: u.member_at ?? now(), left_at: null });
-      if (first) await say(member.id, T.WELCOME);
+      if (first) {
+        await say(member.id, T.WELCOME);
+        const paid = (await db.from("sc_users").select("user_id", { count: "exact", head: true }).not("member_at", "is", null).is("left_at", null)).count ?? 0;
+        await notifyAdmins(`💰 Вступил в клуб: <b>${who(member)}</b>\nИсточник: ${esc(u.src || "без метки")}\nВ клубе из бота: ${paid}`);
+      }
     }
   } else if (["left", "kicked"].includes(st) && u?.member_at) {
     await upd(member.id, { left_at: now() });
+    await notifyAdmins(`👋 Вышел из клуба: <b>${who(member)}</b>`);
   }
 }
 
