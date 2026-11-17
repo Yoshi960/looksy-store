@@ -60,9 +60,15 @@ async function isMember(uid: number): Promise<boolean> {
 }
 
 // ---------------------------------------------------------------- шаги воронки
-async function askQuestion(chat: number, n: number) {
-  await say(chat, `<b>${n + 1}/${T.QUESTIONS.length}.</b> ${T.QUESTIONS[n]}`,
-    kb([{ text: "Да", callback_data: `q:${n}:1` }, { text: "Нет", callback_data: `q:${n}:0` }]));
+// Весь тест — одно сообщение: вопрос меняется на месте, чат не засоряется.
+const qText = (n: number) => `<b>Вопрос ${n + 1} из ${T.QUESTIONS.length}</b>\n\n${T.QUESTIONS[n]}`;
+const qKb = (n: number) => kb([{ text: "Да", callback_data: `q:${n}:1` }, { text: "Нет", callback_data: `q:${n}:0` }]);
+async function askQuestion(chat: number, n: number, editId?: number) {
+  if (editId) {
+    const r = await tg("editMessageText", { chat_id: chat, message_id: editId, text: qText(n), parse_mode: "HTML", reply_markup: qKb(n) });
+    if (r.ok) return;
+  }
+  await say(chat, qText(n), qKb(n));
 }
 async function sendOffer(chat: number) {
   const cached = await kv("video_file_id");
@@ -105,31 +111,31 @@ async function onCallback(cq: any) {
   const dropButtons = () => msg && tg("editMessageReplyMarkup", { chat_id: id, message_id: msg.message_id });
 
   if (data === "go") {
-    await dropButtons();
-    if (u.q >= T.QUESTIONS.length) return void await sendOffer(id);
+    if (u.q >= T.QUESTIONS.length) {
+      await dropButtons();
+      return void await sendOffer(id);
+    }
     await upd(id, { q: 0, yes: 0 });
-    return void await askQuestion(id, 0);
+    return void await askQuestion(id, 0, msg?.message_id); // приветствие превращается в первый вопрос
   }
   if (data === "resume") {
     await dropButtons();
-    if (u.q < T.QUESTIONS.length) return void await askQuestion(id, u.q);
+    if (u.q < T.QUESTIONS.length) return void await askQuestion(id, u.q, msg?.message_id);
     return void await sendOffer(id);
   }
   if (data.startsWith("q:")) {
     const [, nS, aS] = data.split(":");
     const n = Number(nS), yes = aS === "1";
     if (n !== u.q) return; // старая кнопка — игнор
-    if (msg) await tg("editMessageText", {
-      chat_id: id, message_id: msg.message_id, parse_mode: "HTML",
-      text: `<b>${n + 1}/${T.QUESTIONS.length}.</b> ${T.QUESTIONS[n]}\n— ${yes ? "Да" : "Нет"}`,
-    });
     const q = n + 1, total = u.yes + (yes ? 1 : 0);
     await upd(id, { q, yes: total });
-    if (q < T.QUESTIONS.length) return void await askQuestion(id, q);
-    await typing(id, 1200);
-    await say(id, T.result(total));
-    await typing(id, 2500);
-    return void await say(id, T.HOOK, kb([{ text: T.HOOK_BTN, callback_data: "why" }]));
+    if (q < T.QUESTIONS.length) return void await askQuestion(id, q, msg?.message_id);
+    // тест пройден — то же сообщение превращается в результат с крючком
+    const text = `<b>Твой результат: ${total} из ${T.QUESTIONS.length}</b>\n\n${T.result(total)}\n\n${T.HOOK}`;
+    const markup = kb([{ text: T.HOOK_BTN, callback_data: "why" }]);
+    const r = msg ? await tg("editMessageText", { chat_id: id, message_id: msg.message_id, text, parse_mode: "HTML", reply_markup: markup }) : { ok: false };
+    if (!r.ok) await say(id, text, markup);
+    return;
   }
   if (data === "why") {
     await dropButtons();
