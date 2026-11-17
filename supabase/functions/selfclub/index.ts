@@ -98,12 +98,18 @@ async function isMember(uid: number): Promise<boolean> {
 }
 
 // ---------------------------------------------------------------- шаги воронки
+// Правка сообщения: у картинки меняем подпись, у текста — текст.
+async function edit(chat: number, id: number, text: string, markup?: unknown) {
+  const r = await tg("editMessageCaption", { chat_id: chat, message_id: id, caption: text, parse_mode: "HTML", reply_markup: markup });
+  if (r.ok || /not modified/.test(r.description ?? "")) return r;
+  return await tg("editMessageText", { chat_id: chat, message_id: id, text, parse_mode: "HTML", reply_markup: markup });
+}
 // Весь тест — одно сообщение: вопрос меняется на месте, чат не засоряется.
 const qText = (n: number) => `<b>Вопрос ${n + 1} из ${T.QUESTIONS.length}</b>\n\n${T.QUESTIONS[n]}`;
 const qKb = (n: number) => kb([{ text: "Да", callback_data: `q:${n}:1` }, { text: "Нет", callback_data: `q:${n}:0` }]);
 async function askQuestion(chat: number, n: number, editId?: number) {
   if (editId) {
-    const r = await tg("editMessageText", { chat_id: chat, message_id: editId, text: qText(n), parse_mode: "HTML", reply_markup: qKb(n) });
+    const r = await edit(chat, editId, qText(n), qKb(n));
     if (r.ok) return;
   }
   await say(chat, qText(n), qKb(n));
@@ -136,7 +142,7 @@ async function onStart(from: any, payload: string) {
     if (u.member_at && !u.left_at) return void await say(id, T.ALREADY);
     if (u.offer_at) return void await sendOffer(id); // уже всё видел — сразу оффер
   }
-  await say(id, T.START, kb([{ text: T.START_BTN, callback_data: "go" }]));
+  await post(id, T.START_PHOTO, T.START, kb([{ text: T.START_BTN, callback_data: "go" }]));
 }
 
 async function onCallback(cq: any) {
@@ -171,14 +177,14 @@ async function onCallback(cq: any) {
     // тест пройден — то же сообщение превращается в результат с крючком
     const text = `<b>Твой результат: ${total} из ${T.QUESTIONS.length}</b>\n\n${T.result(total)}\n\n${T.HOOK}`;
     const markup = kb([{ text: T.HOOK_BTN, callback_data: "why" }]);
-    const r = msg ? await tg("editMessageText", { chat_id: id, message_id: msg.message_id, text, parse_mode: "HTML", reply_markup: markup }) : { ok: false };
+    const r = msg ? await edit(id, msg.message_id, text, markup) : { ok: false };
     if (!r.ok) await say(id, text, markup);
     return;
   }
   if (data === "why") {
     await dropButtons();
     await typing(id, 1500);
-    return void await say(id, T.WHY, kb([{ text: T.WHY_BTN, callback_data: "watch" }]));
+    return void await post(id, T.WHY_PHOTO, T.WHY, kb([{ text: T.WHY_BTN, callback_data: "watch" }]));
   }
   if (data === "watch") {
     await dropButtons();

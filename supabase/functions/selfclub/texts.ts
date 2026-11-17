@@ -71,6 +71,8 @@ export const OFFER = `<b>SelfClub | Внутренний круг</b> 🏛
 export const OFFER_BTN = "Вступить в клуб";
 
 // Картинки к напоминаниям: файлы в web/selfclub/. Пустая строка — напоминание уйдёт текстом.
+export const START_PHOTO = "selfclub/start.jpg"; // приветствие; тест и результат идут в подписи к этой же картинке
+export const WHY_PHOTO = "selfclub/why.jpg";
 export const NUDGE_PHOTO = "selfclub/nudge.jpg";
 export const REMIND1_PHOTO = "selfclub/remind1.jpg";
 export const REMIND2_PHOTO = "selfclub/remind2.jpg";
